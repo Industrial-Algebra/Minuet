@@ -22,20 +22,14 @@ What Minuet Is
 Minuet targets domains where relational/compositional structure matters more than scale:
 
 Domain | Key Operation
----
+--- | ---
 Drug discovery | Molecular analogy: "X relates to target T as drug D relates to its target"
----
 Robotics | Motor primitive composition with native SE(3) geometryCode understandingSemantic search and refactoring-as-transformation
----
 Music/Audio | Timbral relationships, harmonic structure, gestural vocabularies
----
 Legal reasoning | Precedent retrieval by analogical structure
----
 Education | Concept prerequisites, misconception repair, transfer learning
----
 Multi-agent systems | Mergeable world models, theory of mind
----
 Neurosymbolic AI | Symbol grounding with compositional generalization
----
 Scientific instrumentation | Anomaly characterization, experimental design retrieval
+
 
