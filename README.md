@@ -20,6 +20,7 @@ What Minuet Is
 
 ## Intended Use Cases
 Minuet targets domains where relational/compositional structure matters more than scale:
+
 Domain | Key Operation
 ---
 Drug discovery | Molecular analogy: "X relates to target T as drug D relates to its target"
@@ -37,3 +38,4 @@ Multi-agent systems | Mergeable world models, theory of mind
 Neurosymbolic AI | Symbol grounding with compositional generalization
 ---
 Scientific instrumentation | Anomaly characterization, experimental design retrieval
+
