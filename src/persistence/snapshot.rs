@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn snapshot_roundtrip() {
-        let trace: MemoryTrace<f64, 64> = MemoryTrace::new().into_unknown();
+        let trace: MemoryTrace<f64, 8> = MemoryTrace::new().into_unknown();
 
         let key = TropicalDualClifford::random();
         let value = TropicalDualClifford::random();

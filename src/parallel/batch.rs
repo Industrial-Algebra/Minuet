@@ -44,27 +44,27 @@ where
 /// # Arguments
 ///
 /// * `items` - Items to bundle together
-/// * `beta` - Temperature parameter for bundling
+/// * `beta` - Temperature parameter for bundling (f64)
 ///
 /// # Returns
 ///
-/// The bundled result, or bundling zero if items is empty.
+/// The bundled result, or identity if items is empty.
 #[must_use]
 pub fn bundle_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
     items: &[TropicalDualClifford<T, DIM>],
-    beta: T,
+    beta: f64,
 ) -> TropicalDualClifford<T, DIM>
 where
     TropicalDualClifford<T, DIM>: Send + Sync + Clone,
 {
     if items.is_empty() {
-        return TropicalDualClifford::bundling_zero();
+        return TropicalDualClifford::new();
     }
 
-    items.par_iter().cloned().reduce(
-        || TropicalDualClifford::bundling_zero(),
-        |a, b| a.bundle(&b, beta),
-    )
+    items
+        .par_iter()
+        .cloned()
+        .reduce(|| TropicalDualClifford::new(), |a, b| a.bundle(&b, beta))
 }
 
 /// Parallel similarity computation.
@@ -78,10 +78,7 @@ pub fn similarities_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
 where
     TropicalDualClifford<T, DIM>: Send + Sync,
 {
-    candidates
-        .par_iter()
-        .map(|c| query.similarity(c).to_f64().unwrap_or(0.0))
-        .collect()
+    candidates.par_iter().map(|c| query.similarity(c)).collect()
 }
 
 /// Parallel unbinding.
@@ -122,7 +119,7 @@ where
     let mut similarities: Vec<(usize, f64)> = candidates
         .par_iter()
         .enumerate()
-        .map(|(idx, c)| (idx, query.similarity(c).to_f64().unwrap_or(0.0)))
+        .map(|(idx, c)| (idx, query.similarity(c)))
         .collect();
 
     similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
@@ -144,9 +141,9 @@ where
     items
         .par_iter()
         .map(|item| {
-            let mag = item.magnitude();
-            if mag > T::MIN_POSITIVE {
-                item.scale(T::one() / mag)
+            let mag = item.norm();
+            if mag > 1e-10 {
+                item.scale(T::from_f64(1.0 / mag).unwrap_or(T::one()))
             } else {
                 item.clone()
             }
@@ -157,18 +154,19 @@ where
 /// Parallel grade projection.
 ///
 /// Projects all elements to the specified grade in parallel.
+///
+/// Note: Full grade projection requires the underlying Clifford algebra.
+/// Currently returns clones (passthrough) as TDC doesn't expose project_grade.
 #[must_use]
 pub fn project_grade_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
     items: &[TropicalDualClifford<T, DIM>],
-    grade: usize,
+    _grade: usize,
 ) -> Vec<TropicalDualClifford<T, DIM>>
 where
-    TropicalDualClifford<T, DIM>: Send + Sync,
+    TropicalDualClifford<T, DIM>: Send + Sync + Clone,
 {
-    items
-        .par_iter()
-        .map(|item| item.project_grade(grade))
-        .collect()
+    // TODO: Implement when TDC exposes grade projection
+    items.par_iter().cloned().collect()
 }
 
 /// Parallel weighted sum.
@@ -189,14 +187,14 @@ where
     );
 
     if items.is_empty() {
-        return TropicalDualClifford::bundling_zero();
+        return Bindable::bundling_zero();
     }
 
     items
         .par_iter()
         .zip(weights.par_iter())
         .map(|(item, &weight)| item.scale(weight))
-        .reduce(|| TropicalDualClifford::bundling_zero(), |a, b| a.add(&b))
+        .reduce(|| Bindable::bundling_zero(), |a, b| a.add(&b))
 }
 
 /// Batch configuration for adaptive parallelism.
@@ -252,10 +250,10 @@ mod tests {
 
     #[test]
     fn parallel_binding() {
-        let keys: Vec<TropicalDualClifford<f64, 64>> =
+        let keys: Vec<TropicalDualClifford<f64, 8>> =
             (0..100).map(|_| TropicalDualClifford::random()).collect();
 
-        let values: Vec<TropicalDualClifford<f64, 64>> =
+        let values: Vec<TropicalDualClifford<f64, 8>> =
             (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         let results = bind_batch_parallel(&keys, &values);
@@ -270,13 +268,13 @@ mod tests {
 
     #[test]
     fn parallel_bundling() {
-        let items: Vec<TropicalDualClifford<f64, 64>> =
+        let items: Vec<TropicalDualClifford<f64, 8>> =
             (0..50).map(|_| TropicalDualClifford::random()).collect();
 
         let parallel_result = bundle_parallel(&items, 1.0);
 
         // Sequential bundling for comparison
-        let mut sequential = TropicalDualClifford::bundling_zero();
+        let mut sequential: TropicalDualClifford<f64, 8> = TropicalDualClifford::new();
         for item in &items {
             sequential = sequential.bundle(item, 1.0);
         }
@@ -288,9 +286,9 @@ mod tests {
 
     #[test]
     fn parallel_similarities() {
-        let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let query: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
-        let candidates: Vec<TropicalDualClifford<f64, 64>> =
+        let candidates: Vec<TropicalDualClifford<f64, 8>> =
             (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         let sims = similarities_parallel(&query, &candidates);
@@ -304,9 +302,9 @@ mod tests {
 
     #[test]
     fn top_k_finds_best() {
-        let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let query: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
-        let mut candidates: Vec<TropicalDualClifford<f64, 64>> =
+        let mut candidates: Vec<TropicalDualClifford<f64, 8>> =
             (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         // Put query at position 50
@@ -328,18 +326,18 @@ mod tests {
         };
 
         // Small batch - should use sequential
-        let small_keys: Vec<TropicalDualClifford<f64, 64>> =
+        let small_keys: Vec<TropicalDualClifford<f64, 8>> =
             (0..10).map(|_| TropicalDualClifford::random()).collect();
-        let small_values: Vec<TropicalDualClifford<f64, 64>> =
+        let small_values: Vec<TropicalDualClifford<f64, 8>> =
             (0..10).map(|_| TropicalDualClifford::random()).collect();
 
         let small_results = bind_batch_adaptive(&small_keys, &small_values, &config);
         assert_eq!(small_results.len(), 10);
 
         // Large batch - should use parallel
-        let large_keys: Vec<TropicalDualClifford<f64, 64>> =
+        let large_keys: Vec<TropicalDualClifford<f64, 8>> =
             (0..100).map(|_| TropicalDualClifford::random()).collect();
-        let large_values: Vec<TropicalDualClifford<f64, 64>> =
+        let large_values: Vec<TropicalDualClifford<f64, 8>> =
             (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         let large_results = bind_batch_adaptive(&large_keys, &large_values, &config);

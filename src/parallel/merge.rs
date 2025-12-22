@@ -40,7 +40,7 @@ impl Default for MergeStrategy {
 ///
 /// * `traces` - Traces to merge
 /// * `strategy` - Merge strategy
-/// * `beta` - Temperature parameter
+/// * `beta` - Temperature parameter (f64)
 ///
 /// # Returns
 ///
@@ -48,7 +48,7 @@ impl Default for MergeStrategy {
 pub fn merge_traces_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
     traces: &[MemoryTrace<T, DIM>],
     strategy: MergeStrategy,
-    beta: T,
+    beta: f64,
 ) -> MemoryTrace<T, DIM>
 where
     TropicalDualClifford<T, DIM>: Send + Sync,
@@ -107,8 +107,8 @@ where
     };
 
     // Merge in parallel
-    let effective_beta = match strategy {
-        MergeStrategy::Maximum => T::from_f64(1000.0).unwrap(),
+    let effective_beta: f64 = match strategy {
+        MergeStrategy::Maximum => 1000.0,
         _ => beta,
     };
 
@@ -117,12 +117,12 @@ where
         traces.par_iter().map(|t| t.raw_trace()).collect();
 
     // Weighted sum with bundling
-    let merged = raw_traces
+    let _merged: TropicalDualClifford<T, DIM> = raw_traces
         .par_iter()
         .zip(weights.par_iter())
         .map(|(trace, &weight)| trace.scale(weight))
         .reduce(
-            || TropicalDualClifford::bundling_zero(),
+            || TropicalDualClifford::new(),
             |a, b| a.bundle(&b, effective_beta),
         );
 
@@ -139,7 +139,7 @@ where
 pub fn merge_traces_weighted<T: MinuetFloat + Send + Sync, const DIM: usize>(
     traces: &[MemoryTrace<T, DIM>],
     weights: &[T],
-    beta: T,
+    beta: f64,
 ) -> MemoryTrace<T, DIM>
 where
     TropicalDualClifford<T, DIM>: Send + Sync,
@@ -153,14 +153,11 @@ where
     let raw_traces: Vec<TropicalDualClifford<T, DIM>> =
         traces.par_iter().map(|t| t.raw_trace()).collect();
 
-    let _merged = raw_traces
+    let _merged: TropicalDualClifford<T, DIM> = raw_traces
         .par_iter()
         .zip(weights.par_iter())
         .map(|(trace, &weight)| trace.scale(weight))
-        .reduce(
-            || TropicalDualClifford::bundling_zero(),
-            |a, b| a.bundle(&b, beta),
-        );
+        .reduce(|| TropicalDualClifford::new(), |a, b| a.bundle(&b, beta));
 
     MemoryTrace::new().into_unknown()
 }
@@ -200,15 +197,15 @@ pub struct IncrementalMerger<T: MinuetFloat, const DIM: usize> {
     config: IncrementalMergeConfig<T>,
 
     /// Temperature.
-    beta: T,
+    beta: f64,
 }
 
 impl<T: MinuetFloat, const DIM: usize> IncrementalMerger<T, DIM> {
     /// Create a new incremental merger.
     #[must_use]
-    pub fn new(beta: T) -> Self {
+    pub fn new(beta: f64) -> Self {
         Self {
-            accumulated: TropicalDualClifford::bundling_zero(),
+            accumulated: TropicalDualClifford::new(),
             weight_sum: T::zero(),
             config: IncrementalMergeConfig::default(),
             beta,
@@ -217,9 +214,9 @@ impl<T: MinuetFloat, const DIM: usize> IncrementalMerger<T, DIM> {
 
     /// Create with custom configuration.
     #[must_use]
-    pub fn with_config(config: IncrementalMergeConfig<T>, beta: T) -> Self {
+    pub fn with_config(config: IncrementalMergeConfig<T>, beta: f64) -> Self {
         Self {
-            accumulated: TropicalDualClifford::bundling_zero(),
+            accumulated: TropicalDualClifford::new(),
             weight_sum: T::zero(),
             config,
             beta,
@@ -260,7 +257,7 @@ impl<T: MinuetFloat, const DIM: usize> IncrementalMerger<T, DIM> {
 
     /// Reset the merger.
     pub fn reset(&mut self) {
-        self.accumulated = TropicalDualClifford::bundling_zero();
+        self.accumulated = Bindable::bundling_zero();
         self.weight_sum = T::zero();
     }
 }
@@ -271,8 +268,8 @@ mod tests {
 
     #[test]
     fn merge_strategies() {
-        let trace1: MemoryTrace<f64, 64> = MemoryTrace::new().into_unknown();
-        let trace2: MemoryTrace<f64, 64> = MemoryTrace::new().into_unknown();
+        let trace1: MemoryTrace<f64, 8> = MemoryTrace::new().into_unknown();
+        let trace2: MemoryTrace<f64, 8> = MemoryTrace::new().into_unknown();
 
         // Store something in each
         let k1 = TropicalDualClifford::random();
@@ -302,7 +299,7 @@ mod tests {
 
     #[test]
     fn incremental_merge() {
-        let mut merger: IncrementalMerger<f64, 64> = IncrementalMerger::new(1.0);
+        let mut merger: IncrementalMerger<f64, 8> = IncrementalMerger::new(1.0);
 
         // Add several traces
         for _ in 0..10 {
@@ -311,7 +308,7 @@ mod tests {
         }
 
         let result = merger.result();
-        assert!(result.magnitude() > 0.0);
+        assert!(result.norm() > 0.0);
     }
 
     #[test]
@@ -322,7 +319,7 @@ mod tests {
             max_traces: 100,
         };
 
-        let mut merger: IncrementalMerger<f64, 64> = IncrementalMerger::with_config(config, 1.0);
+        let mut merger: IncrementalMerger<f64, 8> = IncrementalMerger::with_config(config, 1.0);
 
         merger.add_unit(&TropicalDualClifford::random());
         let weight1 = merger.weight_sum();

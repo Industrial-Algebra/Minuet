@@ -19,8 +19,8 @@ fn main() -> minuet::Result<()> {
     println!("=== Molecular Analogy Example ===\n");
 
     // Create memory and codebook
-    let memory: BasicMemoryStore<f64, 128> = BasicMemoryStore::new();
-    let codebook: Codebook<f64, 128> = Codebook::new();
+    let memory: BasicMemoryStore<f64, 16> = BasicMemoryStore::new();
+    let codebook: Codebook<f64, 16> = Codebook::new();
 
     // Create molecular symbols
     let aspirin = codebook.symbol("aspirin");

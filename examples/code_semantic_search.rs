@@ -5,7 +5,10 @@
 
 use minuet::{
     binding::Codebook,
-    domains::symbolic::{AstEncoder, AstNode, CodeSimilarity},
+    domains::{
+        symbolic::{AstEncoder, AstNode, CodeSimilarity},
+        DomainEncoder,
+    },
     memory::{BasicMemoryStore, MemoryStore},
 };
 
@@ -13,10 +16,10 @@ fn main() -> minuet::Result<()> {
     println!("=== Code Semantic Search Example ===\n");
 
     // Create memory and encoder
-    let memory: BasicMemoryStore<f64, 128> = BasicMemoryStore::new();
-    let codebook: Codebook<f64, 128> = Codebook::new();
-    let encoder: AstEncoder<f64, 128> = AstEncoder::new();
-    let similarity: CodeSimilarity<f64, 128> = CodeSimilarity::new();
+    let memory: BasicMemoryStore<f64, 16> = BasicMemoryStore::new();
+    let codebook: Codebook<f64, 16> = Codebook::new();
+    let encoder: AstEncoder<f64, 16> = AstEncoder::new();
+    let similarity: CodeSimilarity<f64, 16> = CodeSimilarity::new();
 
     // Define some code patterns
     let patterns = vec![

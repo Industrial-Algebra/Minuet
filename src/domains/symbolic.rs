@@ -152,11 +152,11 @@ impl<T: MinuetFloat, const DIM: usize> AstEncoder<T, DIM> {
                 let name_sym = self.codebook.symbol(name);
 
                 // Bundle all arguments
-                let args_enc = args
+                let args_enc: TropicalDualClifford<T, DIM> = args
                     .iter()
                     .map(|a| self.encode_node(a))
-                    .fold(TropicalDualClifford::bundling_zero(), |acc, arg| {
-                        acc.bundle(&arg, T::one())
+                    .fold(TropicalDualClifford::new(), |acc, arg| {
+                        acc.bundle(&arg, 1.0)
                     });
 
                 let with_args = name_sym.bind(&args_enc);
@@ -167,12 +167,12 @@ impl<T: MinuetFloat, const DIM: usize> AstEncoder<T, DIM> {
                 let type_sym = self.codebook.symbol("node:block");
 
                 // Bundle all statements with position encoding
-                let mut block_enc = TropicalDualClifford::bundling_zero();
+                let mut block_enc: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
                 for (i, stmt) in statements.iter().enumerate() {
                     let pos_sym = self.codebook.symbol(&format!("pos:{}", i));
                     let stmt_enc = self.encode_node(stmt);
                     let positioned = pos_sym.bind(&stmt_enc);
-                    block_enc = block_enc.bundle(&positioned, T::one());
+                    block_enc = block_enc.bundle(&positioned, 1.0);
                 }
 
                 type_sym.bind(&block_enc)
@@ -227,7 +227,7 @@ impl<T: MinuetFloat, const DIM: usize> CodeSimilarity<T, DIM> {
     pub fn similarity(&self, a: &AstNode, b: &AstNode) -> f64 {
         let enc_a = self.encoder.encode(a);
         let enc_b = self.encoder.encode(b);
-        enc_a.similarity(&enc_b).to_f64().unwrap_or(0.0)
+        enc_a.similarity(&enc_b)
     }
 }
 
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn ast_encoding() {
-        let encoder: AstEncoder<f64, 64> = AstEncoder::new();
+        let encoder: AstEncoder<f64, 8> = AstEncoder::new();
 
         // x + y
         let expr1 = AstNode::binary("+", AstNode::ident("x"), AstNode::ident("y"));
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn code_similarity() {
-        let sim: CodeSimilarity<f64, 64> = CodeSimilarity::new();
+        let sim: CodeSimilarity<f64, 8> = CodeSimilarity::new();
 
         let expr1 = AstNode::binary("+", AstNode::ident("a"), AstNode::ident("b"));
 

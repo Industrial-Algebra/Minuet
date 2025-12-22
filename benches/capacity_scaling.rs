@@ -13,19 +13,19 @@ fn store_at_various_loads(c: &mut Criterion) {
             BenchmarkId::new("single_store/64", initial_load),
             &initial_load,
             |b, &initial_load| {
-                let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+                let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
 
                 // Pre-load
                 for _ in 0..initial_load {
-                    let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                    let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                    let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                    let value: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                     store.store(&key, &value).unwrap();
                 }
 
                 // Benchmark single store
                 b.iter(|| {
-                    let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                    let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                    let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                    let value: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                     black_box(store.store(&key, &value));
                 });
             },
@@ -40,11 +40,11 @@ fn capacity_info_computation(c: &mut Criterion) {
 
     for load in [10, 100, 500] {
         group.bench_with_input(BenchmarkId::new("compute", load), &load, |b, &load| {
-            let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+            let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
 
             for _ in 0..load {
-                let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                let value: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                 store.store(&key, &value).unwrap();
             }
 

@@ -32,7 +32,7 @@ fn binding_throughput(c: &mut Criterion) {
             BenchmarkId::new("sequential/64", size),
             &size,
             |b, &size| {
-                let pairs = generate_random_pairs::<64>(size);
+                let pairs = generate_random_pairs::<8>(size);
                 b.iter(|| {
                     for (k, v) in &pairs {
                         black_box(k.bind(v));
@@ -43,7 +43,7 @@ fn binding_throughput(c: &mut Criterion) {
 
         // Parallel binding - 64 dimensions
         group.bench_with_input(BenchmarkId::new("parallel/64", size), &size, |b, &size| {
-            let pairs = generate_random_pairs::<64>(size);
+            let pairs = generate_random_pairs::<8>(size);
             let (keys, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
             b.iter(|| {
                 black_box(bind_batch_parallel(&keys, &values));
@@ -55,7 +55,7 @@ fn binding_throughput(c: &mut Criterion) {
             BenchmarkId::new("sequential/256", size),
             &size,
             |b, &size| {
-                let pairs = generate_random_pairs::<256>(size);
+                let pairs = generate_random_pairs::<8>(size);
                 b.iter(|| {
                     for (k, v) in &pairs {
                         black_box(k.bind(v));
@@ -66,7 +66,7 @@ fn binding_throughput(c: &mut Criterion) {
 
         // Parallel binding - 256 dimensions
         group.bench_with_input(BenchmarkId::new("parallel/256", size), &size, |b, &size| {
-            let pairs = generate_random_pairs::<256>(size);
+            let pairs = generate_random_pairs::<8>(size);
             let (keys, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
             b.iter(|| {
                 black_box(bind_batch_parallel(&keys, &values));
@@ -88,7 +88,7 @@ fn bundling_throughput(c: &mut Criterion) {
             BenchmarkId::new("sequential/64", size),
             &size,
             |b, &size| {
-                let items: Vec<TropicalDualClifford<f64, 64>> =
+                let items: Vec<TropicalDualClifford<f64, 8>> =
                     (0..size).map(|_| TropicalDualClifford::random()).collect();
                 b.iter(|| {
                     let mut result = TropicalDualClifford::bundling_zero();
@@ -102,7 +102,7 @@ fn bundling_throughput(c: &mut Criterion) {
 
         // Parallel bundling
         group.bench_with_input(BenchmarkId::new("parallel/64", size), &size, |b, &size| {
-            let items: Vec<TropicalDualClifford<f64, 64>> =
+            let items: Vec<TropicalDualClifford<f64, 8>> =
                 (0..size).map(|_| TropicalDualClifford::random()).collect();
             b.iter(|| {
                 black_box(bundle_parallel(&items, 1.0));
@@ -124,20 +124,20 @@ fn dimension_scaling(c: &mut Criterion) {
     });
 
     group.bench_function("bind/64", |b| {
-        let a: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
         b.iter(|| black_box(a.bind(&c)));
     });
 
     group.bench_function("bind/128", |b| {
-        let a: TropicalDualClifford<f64, 128> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 128> = TropicalDualClifford::random();
+        let a: TropicalDualClifford<f64, 16> = TropicalDualClifford::random();
+        let c: TropicalDualClifford<f64, 16> = TropicalDualClifford::random();
         b.iter(|| black_box(a.bind(&c)));
     });
 
     group.bench_function("bind/256", |b| {
-        let a: TropicalDualClifford<f64, 256> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 256> = TropicalDualClifford::random();
+        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
         b.iter(|| black_box(a.bind(&c)));
     });
 

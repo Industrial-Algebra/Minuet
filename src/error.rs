@@ -123,13 +123,20 @@ pub enum MinuetError {
     #[cfg(feature = "persistence")]
     #[error("Recovery failed: {0}")]
     RecoveryFailed(String),
+
+    /// Feature not yet implemented.
+    #[error("Not implemented: {feature}")]
+    NotImplemented {
+        /// Description of the unimplemented feature
+        feature: String,
+    },
 }
 
 /// Result type alias for Minuet operations.
 pub type Result<T> = std::result::Result<T, MinuetError>;
 
 /// Capacity warning levels for proactive management.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CapacityWarning {
     /// Approaching capacity limit (SNR degrading).
     Approaching {

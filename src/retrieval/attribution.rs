@@ -156,7 +156,7 @@ impl<T: MinuetFloat, const DIM: usize> Attribution<T, DIM> {
             // Contribution is proportional to similarity between
             // the unbinding of query from this binding and the result
             let unbound = query.unbind(binding);
-            let sim = unbound.similarity(result).to_f64().unwrap_or(0.0);
+            let sim = unbound.similarity(result);
 
             // Only track positive contributions above threshold
             if sim > self.threshold {
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn attribution_empty() {
-        let attr: Attribution<f64, 64> = Attribution::new();
+        let attr: Attribution<f64, 8> = Attribution::new();
         let query = TropicalDualClifford::random();
         let result = TropicalDualClifford::random();
 
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn attribution_with_bindings() {
-        let mut attr: Attribution<f64, 64> = Attribution::new().with_threshold(0.0);
+        let mut attr: Attribution<f64, 8> = Attribution::new().with_threshold(0.0);
 
         // Register some bindings
         let key1 = TropicalDualClifford::random();

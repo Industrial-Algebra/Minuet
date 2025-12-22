@@ -6,8 +6,11 @@
 use std::f64::consts::PI;
 
 use minuet::{
-    binding::Codebook,
-    domains::geometric::{MotorPrimitives, Point3, RigidTransform, Rotation3, SE3Encoder},
+    binding::{BindingAlgebra, Codebook},
+    domains::{
+        geometric::{MotorPrimitives, Point3, RigidTransform, Rotation3, SE3Encoder},
+        DomainEncoder,
+    },
     memory::{BasicMemoryStore, MemoryStore},
 };
 
@@ -17,8 +20,8 @@ fn main() -> minuet::Result<()> {
     // Create motor primitive library
     let mut primitives: MotorPrimitives<f64, 8> = MotorPrimitives::new();
     let encoder: SE3Encoder<f64, 8> = SE3Encoder::new();
-    let memory: BasicMemoryStore<f64, 128> = BasicMemoryStore::new();
-    let codebook: Codebook<f64, 128> = Codebook::new();
+    let memory: BasicMemoryStore<f64, 16> = BasicMemoryStore::new();
+    let codebook: Codebook<f64, 16> = Codebook::new();
 
     println!("Creating motor primitives...\n");
 

@@ -12,5 +12,5 @@ pub use capacity::{CapacityInfo, CapacityTracker};
 pub use query::{
     BitMask, CleanupStrategy, Query, QueryPattern, QueryResult, QueryStats, RankedResult,
 };
-pub use store::{MemoryStore, MergeResult, StoreReceipt};
+pub use store::{BasicMemoryStore, MemoryStore, MemoryStoreBuilder, MergeResult, StoreReceipt};
 pub use trace::{MemoryTrace, TraceSnapshot};

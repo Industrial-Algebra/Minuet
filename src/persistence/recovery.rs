@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn recovery_from_empty() {
         let (trace, result) =
-            Recovery::recover::<f64, 64>("nonexistent.snapshot", "nonexistent.journal").unwrap();
+            Recovery::recover::<f64, 8>("nonexistent.snapshot", "nonexistent.journal").unwrap();
 
         assert_eq!(trace.item_count(), 0);
         assert!(!result.snapshot_loaded);

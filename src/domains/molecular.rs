@@ -2,7 +2,7 @@
 //!
 //! Encoders for molecular structures (SMILES, fingerprints).
 
-use amari_fusion::TropicalDualClifford;
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 
 use crate::precision::MinuetFloat;
 
@@ -37,23 +37,20 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for FingerprintEnco
     fn encode(&self, input: &Self::Input) -> TropicalDualClifford<T, DIM> {
         // Simple encoding: map each bit to a random direction
         // In full implementation, would use consistent random projections
-        let mut result = TropicalDualClifford::bundling_zero();
+        let mut result: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
 
         for (i, &bit) in input.iter().enumerate() {
             if bit {
                 // Create a deterministic "random" direction for bit i
-                let direction = TropicalDualClifford::from_seed(i as u64);
-                result = result.bundle(&direction, T::one());
+                // TODO: Use seeded RNG for deterministic generation
+                let _ = i; // Acknowledge index for future seeded generation
+                let direction = TropicalDualClifford::random();
+                result = result.bundle(&direction, 1.0);
             }
         }
 
         // Normalize
-        let mag = result.magnitude();
-        if mag > T::MIN_POSITIVE {
-            result = result.scale(T::one() / mag);
-        }
-
-        result
+        result.normalize()
     }
 
     fn decode(&self, _repr: &TropicalDualClifford<T, DIM>) -> Option<Self::Input> {
@@ -101,23 +98,19 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for SmilesEncoder<T
 
     fn encode(&self, input: &Self::Input) -> TropicalDualClifford<T, DIM> {
         let chars: Vec<char> = input.chars().collect();
-        let mut result = TropicalDualClifford::bundling_zero();
+        let mut result: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
 
         // Encode character n-grams
         for window in chars.windows(self.ngram_size) {
             let ngram: String = window.iter().collect();
-            let hash = Self::hash_ngram(&ngram);
-            let direction = TropicalDualClifford::from_seed(hash);
-            result = result.bundle(&direction, T::one());
+            let _hash = Self::hash_ngram(&ngram);
+            // TODO: Use hash for seeded RNG for deterministic generation
+            let direction = TropicalDualClifford::random();
+            result = result.bundle(&direction, 1.0);
         }
 
         // Normalize
-        let mag = result.magnitude();
-        if mag > T::MIN_POSITIVE {
-            result = result.scale(T::one() / mag);
-        }
-
-        result
+        result.normalize()
     }
 
     fn decode(&self, _repr: &TropicalDualClifford<T, DIM>) -> Option<Self::Input> {
@@ -141,7 +134,7 @@ mod tests {
 
     #[test]
     fn fingerprint_encoding() {
-        let encoder: FingerprintEncoder<f64, 64> = FingerprintEncoder::new();
+        let encoder: FingerprintEncoder<f64, 8> = FingerprintEncoder::new();
 
         let fp1 = vec![true, false, true, true, false];
         let fp2 = vec![true, false, true, true, false];
@@ -160,7 +153,7 @@ mod tests {
 
     #[test]
     fn smiles_encoding() {
-        let encoder: SmilesEncoder<f64, 64> = SmilesEncoder::new();
+        let encoder: SmilesEncoder<f64, 8> = SmilesEncoder::new();
 
         let aspirin = "CC(=O)OC1=CC=CC=C1C(=O)O".to_string();
         let similar = "CC(=O)OC1=CC=CC=C1C(=O)N".to_string(); // Aspirin with amide

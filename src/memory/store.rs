@@ -134,7 +134,7 @@ impl<T: MinuetFloat, const DIM: usize> BasicMemoryStore<T, DIM, store_state::Rea
 
     /// Create with a specific temperature parameter.
     #[must_use]
-    pub fn with_beta(beta: T) -> Self {
+    pub fn with_beta(beta: f64) -> Self {
         Self {
             trace: MemoryTrace::with_beta(beta).into_unknown(),
             _state: PhantomData,
@@ -174,8 +174,11 @@ where
         let info = self.trace.capacity_info();
 
         Ok(RetrievalResult {
-            value,
+            value: value.clone(),
+            raw_value: value,
             confidence: info.estimated_snr,
+            attribution: Vec::new(),
+            query_similarity: 1.0, // Direct retrieval
         })
     }
 
@@ -205,23 +208,20 @@ where
         Ok(MergeResult {
             items_merged: other_count,
             final_snr: final_info.estimated_snr,
-            capacity_warning: final_info
-                .remaining_stores
-                .map(|r| {
-                    if r == 0 {
-                        CapacityWarning::Critical {
-                            snr: final_info.estimated_snr,
-                        }
-                    } else if final_info.utilization > 0.7 {
-                        CapacityWarning::Approaching {
-                            utilization: final_info.utilization,
-                            remaining_stores: r,
-                        }
-                    } else {
-                        return;
-                    }
-                })
-                .flatten(),
+            capacity_warning: final_info.remaining_stores.and_then(|r| {
+                if r == 0 {
+                    Some(CapacityWarning::Critical {
+                        snr: final_info.estimated_snr,
+                    })
+                } else if final_info.utilization > 0.7 {
+                    Some(CapacityWarning::Approaching {
+                        utilization: final_info.utilization,
+                        remaining_stores: r,
+                    })
+                } else {
+                    None
+                }
+            }),
         })
     }
 
@@ -254,9 +254,10 @@ where
 /// Builder for configuring memory stores.
 #[derive(Debug, Clone)]
 pub struct MemoryStoreBuilder<T: MinuetFloat, const DIM: usize> {
-    beta: T,
-    snr_threshold: T,
+    beta: f64,
+    snr_threshold: f64,
     warning_threshold: f64,
+    _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: MinuetFloat, const DIM: usize> MemoryStoreBuilder<T, DIM> {
@@ -264,22 +265,23 @@ impl<T: MinuetFloat, const DIM: usize> MemoryStoreBuilder<T, DIM> {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            beta: T::from_f64(1.0).unwrap(),
-            snr_threshold: T::from_f64(0.5).unwrap(),
+            beta: 1.0,
+            snr_threshold: 0.5,
             warning_threshold: 0.7,
+            _phantom: std::marker::PhantomData,
         }
     }
 
     /// Set the temperature parameter.
     #[must_use]
-    pub fn beta(mut self, beta: T) -> Self {
+    pub fn beta(mut self, beta: f64) -> Self {
         self.beta = beta;
         self
     }
 
     /// Set the SNR threshold for capacity warnings.
     #[must_use]
-    pub fn snr_threshold(mut self, threshold: T) -> Self {
+    pub fn snr_threshold(mut self, threshold: f64) -> Self {
         self.snr_threshold = threshold;
         self
     }
@@ -307,17 +309,18 @@ impl<T: MinuetFloat, const DIM: usize> Default for MemoryStoreBuilder<T, DIM> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amari_fusion::holographic::Bindable;
 
     #[test]
     fn basic_store_creation() {
-        let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+        let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
         assert!(store.is_empty());
         assert_eq!(store.len(), 0);
     }
 
     #[test]
     fn store_and_retrieve() {
-        let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+        let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
 
         let key = TropicalDualClifford::random();
         let value = TropicalDualClifford::random();
@@ -332,7 +335,7 @@ mod tests {
 
     #[test]
     fn builder_pattern() {
-        let store: BasicMemoryStore<f64, 128> = MemoryStoreBuilder::new()
+        let store: BasicMemoryStore<f64, 16> = MemoryStoreBuilder::new()
             .beta(2.0)
             .snr_threshold(0.6)
             .warning_threshold(0.8)
@@ -343,7 +346,7 @@ mod tests {
 
     #[test]
     fn clear_resets_store() {
-        let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+        let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
 
         let key = TropicalDualClifford::random();
         let value = TropicalDualClifford::random();

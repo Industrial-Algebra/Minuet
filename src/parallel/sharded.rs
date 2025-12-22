@@ -29,12 +29,11 @@ pub struct ShardHasher {
 }
 
 impl ShardHasher {
-    /// Create a new hasher with random seed.
+    /// Create a new hasher with default seed.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            seed: rand::random(),
-        }
+        // Use a fixed seed for determinism; use with_seed for custom seeding
+        Self { seed: 0xDEADBEEF }
     }
 
     /// Create with specific seed for reproducibility.
@@ -52,8 +51,8 @@ impl ShardHasher {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         self.seed.hash(&mut hasher);
 
-        // Hash based on the scalar and first vector components
-        let scalar_bits = key.scalar_part().to_f64().unwrap_or(0.0).to_bits();
+        // Hash based on norm as a simple distinguishing feature
+        let scalar_bits = key.norm().to_bits();
         scalar_bits.hash(&mut hasher);
 
         (hasher.finish() as usize) % SHARDS
@@ -84,19 +83,19 @@ pub struct ShardedMemory<T: MinuetFloat, const DIM: usize, const SHARDS: usize> 
     operation_counter: AtomicU64,
 
     /// Temperature parameter.
-    beta: T,
+    beta: f64,
 }
 
 impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM, SHARDS> {
     /// Create a new sharded memory.
     #[must_use]
     pub fn new() -> Self {
-        Self::with_beta(T::from_f64(1.0).unwrap())
+        Self::with_beta(1.0)
     }
 
     /// Create with specific temperature.
     #[must_use]
-    pub fn with_beta(beta: T) -> Self {
+    pub fn with_beta(beta: f64) -> Self {
         // Initialize array of traces
         let shards =
             std::array::from_fn(|_| RwLock::new(MemoryTrace::with_beta(beta).into_unknown()));
@@ -111,7 +110,7 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
 
     /// Create with specific hasher for reproducibility.
     #[must_use]
-    pub fn with_hasher(hasher: ShardHasher, beta: T) -> Self {
+    pub fn with_hasher(hasher: ShardHasher, beta: f64) -> Self {
         let shards =
             std::array::from_fn(|_| RwLock::new(MemoryTrace::with_beta(beta).into_unknown()));
 
@@ -159,19 +158,22 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
             .collect();
 
         // Bundle results from all shards
-        let mut combined = TropicalDualClifford::bundling_zero();
+        let mut combined: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
         for result in &results {
             combined = combined.bundle(result, self.beta);
         }
 
         // Compute aggregate confidence
-        let total_items: u64 = self.shards.iter().map(|s| s.read().item_count()).sum();
+        let _total_items: u64 = self.shards.iter().map(|s| s.read().item_count()).sum();
 
         let capacity = self.capacity();
 
         Ok(RetrievalResult {
-            value: combined,
+            value: combined.clone(),
+            raw_value: combined,
             confidence: capacity.estimated_snr,
+            attribution: Vec::new(),
+            query_similarity: 1.0,
         })
     }
 
@@ -351,7 +353,7 @@ where
 
     fn trace(&self) -> TropicalDualClifford<T, DIM> {
         // Return bundled trace from all shards
-        let mut combined = TropicalDualClifford::bundling_zero();
+        let mut combined: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
         for shard in &self.shards {
             let trace = shard.read();
             combined = combined.bundle(&trace.raw_trace(), self.beta);
@@ -375,7 +377,7 @@ mod tests {
 
     #[test]
     fn sharded_store_retrieve() {
-        let memory: ShardedMemory<f64, 64, 4> = ShardedMemory::new();
+        let memory: ShardedMemory<f64, 8, 4> = ShardedMemory::new();
 
         let key = TropicalDualClifford::random();
         let value = TropicalDualClifford::random();
@@ -390,7 +392,7 @@ mod tests {
 
     #[test]
     fn sharded_capacity() {
-        let memory: ShardedMemory<f64, 64, 8> = ShardedMemory::new();
+        let memory: ShardedMemory<f64, 8, 8> = ShardedMemory::new();
 
         let capacity = memory.capacity();
         // Total capacity should be roughly 8x single trace capacity
@@ -399,7 +401,7 @@ mod tests {
 
     #[test]
     fn sharded_distribution() {
-        let memory: ShardedMemory<f64, 64, 4> = ShardedMemory::new();
+        let memory: ShardedMemory<f64, 8, 4> = ShardedMemory::new();
 
         // Store many items
         for _ in 0..100 {
@@ -420,10 +422,10 @@ mod tests {
     fn deterministic_hashing() {
         let hasher = ShardHasher::with_seed(42);
 
-        let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
-        let idx1 = hasher.shard_index::<f64, 64, 8>(&key);
-        let idx2 = hasher.shard_index::<f64, 64, 8>(&key);
+        let idx1 = hasher.shard_index::<f64, 8, 8>(&key);
+        let idx2 = hasher.shard_index::<f64, 8, 8>(&key);
 
         assert_eq!(idx1, idx2);
         assert!(idx1 < 8);

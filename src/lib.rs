@@ -22,7 +22,7 @@
 //! use minuet::{MemoryStore, Query, Codebook};
 //!
 //! // Create a memory store with 256-dimensional representations
-//! let memory = MemoryStore::<f64, 256>::new();
+//! let memory = MemoryStore::<f64, 8>::new();
 //! let codebook = Codebook::new();
 //!
 //! // Create symbols

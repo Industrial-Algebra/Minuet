@@ -19,13 +19,13 @@ use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 /// A simple working memory agent.
 struct WorkingMemoryAgent {
     /// Short-term memory (high capacity, fast decay).
-    short_term: BasicMemoryStore<f64, 128>,
+    short_term: BasicMemoryStore<f64, 16>,
     /// Long-term memory (lower capacity per chunk, stable).
-    long_term: BasicMemoryStore<f64, 256>,
+    long_term: BasicMemoryStore<f64, 8>,
     /// Symbol vocabulary.
-    codebook: Codebook<f64, 128>,
+    codebook: Codebook<f64, 16>,
     /// Current context vector.
-    context: TropicalDualClifford<f64, 128>,
+    context: TropicalDualClifford<f64, 16>,
 }
 
 impl WorkingMemoryAgent {

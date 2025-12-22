@@ -16,8 +16,8 @@ fn parallel_similarity(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         group.bench_with_input(BenchmarkId::new("full_scan/64", size), &size, |b, &size| {
-            let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-            let candidates: Vec<TropicalDualClifford<f64, 64>> =
+            let query: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+            let candidates: Vec<TropicalDualClifford<f64, 8>> =
                 (0..size).map(|_| TropicalDualClifford::random()).collect();
 
             b.iter(|| {
@@ -26,8 +26,8 @@ fn parallel_similarity(c: &mut Criterion) {
         });
 
         group.bench_with_input(BenchmarkId::new("top_10/64", size), &size, |b, &size| {
-            let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-            let candidates: Vec<TropicalDualClifford<f64, 64>> =
+            let query: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+            let candidates: Vec<TropicalDualClifford<f64, 8>> =
                 (0..size).map(|_| TropicalDualClifford::random()).collect();
 
             b.iter(|| {
@@ -46,7 +46,7 @@ fn parallel_normalization(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         group.bench_with_input(BenchmarkId::new("batch/64", size), &size, |b, &size| {
-            let items: Vec<TropicalDualClifford<f64, 64>> =
+            let items: Vec<TropicalDualClifford<f64, 8>> =
                 (0..size).map(|_| TropicalDualClifford::random()).collect();
 
             b.iter(|| {
@@ -63,7 +63,7 @@ fn sharded_memory(c: &mut Criterion) {
 
     // Store throughput
     group.bench_function("store_batch/4_shards", |b| {
-        let memory: ShardedMemory<f64, 64, 4> = ShardedMemory::new();
+        let memory: ShardedMemory<f64, 8, 4> = ShardedMemory::new();
         let pairs: Vec<_> = (0..100)
             .map(|_| {
                 (
@@ -80,12 +80,12 @@ fn sharded_memory(c: &mut Criterion) {
 
     // Retrieval with pre-loaded data
     group.bench_function("retrieve/4_shards/100_items", |b| {
-        let memory: ShardedMemory<f64, 64, 4> = ShardedMemory::new();
+        let memory: ShardedMemory<f64, 8, 4> = ShardedMemory::new();
 
         let mut keys = Vec::new();
         for _ in 0..100 {
-            let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-            let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+            let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+            let value: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
             memory.store(&key, &value).unwrap();
             keys.push(key);
         }

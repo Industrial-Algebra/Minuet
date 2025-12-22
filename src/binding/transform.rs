@@ -67,25 +67,32 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, MaybeInvertible> {
     /// # Returns
     ///
     /// The extracted transformation, or error if before is not invertible.
-    #[cfg_attr(feature = "contracts", requires(before.magnitude() > T::MIN_POSITIVE))]
     pub fn extract(
         before: &TropicalDualClifford<T, DIM>,
         after: &TropicalDualClifford<T, DIM>,
     ) -> Result<Self> {
-        let before_mag = before.magnitude();
+        let before_mag = before.norm();
 
-        if before_mag < T::MIN_POSITIVE {
+        if before_mag < 1e-10 {
             return Err(MinuetError::TransformExtraction(
                 "before element is not invertible (near-zero magnitude)".into(),
             ));
         }
 
-        let before_inv = before.binding_inverse();
+        let before_inv = match before.binding_inverse() {
+            Some(inv) => inv,
+            None => {
+                return Err(MinuetError::TransformExtraction(
+                    "before element has no inverse".into(),
+                ))
+            }
+        };
+
         let repr = after.bind(&before_inv);
 
         // Compute fidelity: how close is apply(before) to after?
         let reconstructed = repr.bind(before);
-        let fidelity = reconstructed.similarity(after).to_f64().unwrap_or(0.0);
+        let fidelity = reconstructed.similarity(after);
 
         Ok(Self {
             repr,
@@ -120,13 +127,13 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, MaybeInvertible> {
         }
 
         // Extract individual transforms and bundle them
-        let mut combined = TropicalDualClifford::bundling_zero();
+        let mut combined: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
         let mut valid_count = 0;
         let mut total_fidelity = 0.0;
 
         for (before, after) in pairs {
             if let Ok(transform) = Self::extract(before, after) {
-                combined = combined.bundle(&transform.repr, T::one());
+                combined = combined.bundle(&transform.repr, 1.0);
                 total_fidelity += transform.metadata.fidelity;
                 valid_count += 1;
             }
@@ -163,13 +170,13 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, MaybeInvertible> {
     }
 
     /// Verify that this transform is invertible.
-    pub fn verify_invertible(self, epsilon: T) -> Result<Transform<T, DIM, Invertible>> {
-        let mag = self.repr.magnitude();
+    pub fn verify_invertible(self, epsilon: f64) -> Result<Transform<T, DIM, Invertible>> {
+        let mag = self.repr.norm();
 
         if mag < epsilon {
             return Err(MinuetError::SingularInverse {
-                magnitude: mag.to_f64().unwrap_or(0.0),
-                epsilon: epsilon.to_f64().unwrap_or(1e-10),
+                magnitude: mag,
+                epsilon,
             });
         }
 
@@ -242,15 +249,15 @@ impl<T: MinuetFloat, const DIM: usize, Inv> Transform<T, DIM, Inv> {
 
     /// Compute the magnitude of the transformation.
     #[must_use]
-    pub fn magnitude(&self) -> T {
-        self.repr.magnitude()
+    pub fn magnitude(&self) -> f64 {
+        self.repr.norm()
     }
 
     /// Check if this is close to the identity transformation.
     #[must_use]
-    pub fn is_identity(&self, threshold: T) -> bool {
-        let identity = TropicalDualClifford::binding_identity();
-        self.repr.similarity(&identity) > (T::one() - threshold)
+    pub fn is_identity(&self, threshold: f64) -> bool {
+        let identity = TropicalDualClifford::<T, DIM>::binding_identity();
+        self.repr.similarity(&identity) > (1.0 - threshold)
     }
 }
 
@@ -263,14 +270,16 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, Invertible> {
         &self,
         input: &TropicalDualClifford<T, DIM>,
     ) -> TropicalDualClifford<T, DIM> {
-        let inv = self.repr.binding_inverse();
+        // Safe to unwrap since we verified invertibility
+        let inv = self.repr.binding_inverse().expect("verified invertible");
         inv.bind(input)
     }
 
     /// Compute the inverse transformation.
     #[must_use]
     pub fn inverse(&self) -> Transform<T, DIM, Invertible> {
-        let inv_repr = self.repr.binding_inverse();
+        // Safe to unwrap since we verified invertibility
+        let inv_repr = self.repr.binding_inverse().expect("verified invertible");
 
         Transform {
             repr: inv_repr,
@@ -300,7 +309,7 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, Invertible> {
     /// Uses geometric interpolation (SLERP-like for versors).
     #[must_use]
     pub fn interpolate(&self, t: T) -> Transform<T, DIM, MaybeInvertible> {
-        let identity = TropicalDualClifford::binding_identity();
+        let identity = TropicalDualClifford::<T, DIM>::binding_identity();
 
         // Linear interpolation in TDC space (not true SLERP, but sufficient)
         let one_minus_t = T::one() - t;
@@ -378,8 +387,8 @@ mod tests {
 
     #[test]
     fn extract_and_apply() {
-        let before: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let after: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let before: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let after: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         let transform = Transform::extract(&before, &after).unwrap();
 
@@ -393,7 +402,7 @@ mod tests {
 
     #[test]
     fn identity_transform() {
-        let elem: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let elem: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         // Extract identity: before == after
         let transform = Transform::extract(&elem, &elem).unwrap();
@@ -403,9 +412,9 @@ mod tests {
 
     #[test]
     fn transform_composition() {
-        let a: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let b: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         let t1 = Transform::extract(&a, &b).unwrap();
         let t2 = Transform::extract(&b, &c).unwrap();
@@ -422,8 +431,8 @@ mod tests {
 
     #[test]
     fn invertible_transform() {
-        let before: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let after: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let before: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let after: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         let transform = Transform::extract(&before, &after)
             .unwrap()
@@ -439,10 +448,10 @@ mod tests {
 
     #[test]
     fn builder_pattern() {
-        let a: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let b: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let d: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let d: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         let transform = TransformBuilder::new()
             .example(a, b)

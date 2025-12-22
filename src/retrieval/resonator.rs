@@ -121,6 +121,7 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
         Self {
             codebook_symbols: codebook.all_symbols(),
             config: ResonatorConfig::default(),
+            _phantom: PhantomData,
         }
     }
 
@@ -169,7 +170,7 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
             let similarities: Vec<f64> = self
                 .codebook_symbols
                 .iter()
-                .map(|s| current.similarity(s).to_f64().unwrap_or(0.0))
+                .map(|s| current.similarity(s))
                 .collect();
 
             // Find best match
@@ -219,9 +220,9 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
 
             // Optionally normalize
             if self.config.normalize {
-                let mag = current.magnitude();
-                if mag > T::MIN_POSITIVE {
-                    current = current.scale(T::one() / mag);
+                let mag = current.norm();
+                if mag > 1e-10 {
+                    current = current.scale(T::from_f64(1.0 / mag).unwrap_or(T::one()));
                 }
             }
         }
@@ -248,10 +249,10 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
         let sum_exp: f64 = exp_sims.iter().sum();
 
         // Weighted sum
-        let mut result = TropicalDualClifford::bundling_zero();
+        let mut result: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
 
         for (symbol, &weight) in self.codebook_symbols.iter().zip(exp_sims.iter()) {
-            let normalized_weight = T::from_f64(weight / sum_exp).unwrap();
+            let normalized_weight = T::from_f64(weight / sum_exp).unwrap_or(T::zero());
             result = result.add(&symbol.scale(normalized_weight));
         }
 
@@ -276,7 +277,7 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
         self.codebook_symbols
             .iter()
             .enumerate()
-            .map(|(idx, s)| (idx, input.similarity(s).to_f64().unwrap_or(0.0)))
+            .map(|(idx, s)| (idx, input.similarity(s)))
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
     }
 
@@ -346,7 +347,7 @@ mod tests {
 
     #[test]
     fn resonator_cleanup() {
-        let codebook: Codebook<f64, 64> = Codebook::new();
+        let codebook: Codebook<f64, 8> = Codebook::new();
 
         // Create some symbols
         let _a = codebook.symbol("a");
@@ -365,13 +366,13 @@ mod tests {
 
     #[test]
     fn resonator_with_noise() {
-        let codebook: Codebook<f64, 64> = Codebook::new();
+        let codebook: Codebook<f64, 8> = Codebook::new();
 
         let a = codebook.symbol("a");
-        let b = codebook.symbol("b");
+        let _b = codebook.symbol("b");
 
         // Create noisy version of 'a'
-        let noise: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let noise: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
         let noisy_a = a.scale(0.9).add(&noise.scale(0.1));
 
         let resonator = Resonator::with_config(
@@ -390,7 +391,7 @@ mod tests {
 
     #[test]
     fn nearest_without_iteration() {
-        let codebook: Codebook<f64, 64> = Codebook::new();
+        let codebook: Codebook<f64, 8> = Codebook::new();
 
         let _a = codebook.symbol("a");
         let _b = codebook.symbol("b");
@@ -398,7 +399,7 @@ mod tests {
         let resonator = Resonator::new(&codebook);
 
         let query = codebook.get("a").unwrap();
-        let (idx, sim) = resonator.nearest(&query).unwrap();
+        let (_idx, sim) = resonator.nearest(&query).unwrap();
 
         assert!(sim > 0.99);
     }

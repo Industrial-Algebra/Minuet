@@ -20,7 +20,7 @@
 //! use minuet::persistence::PersistentMemory;
 //!
 //! // Open or create a persistent memory
-//! let memory = PersistentMemory::<f64, 256>::open("./memory.db")?;
+//! let memory = PersistentMemory::<f64, 8>::open("./memory.db")?;
 //!
 //! // Store with automatic journaling
 //! memory.store(&key, &value)?;
@@ -197,8 +197,11 @@ where
         let info = self.memory.capacity_info();
 
         Ok(RetrievalResult {
-            value,
+            value: value.clone(),
+            raw_value: value,
             confidence: info.estimated_snr,
+            attribution: Vec::new(),
+            query_similarity: 1.0,
         })
     }
 

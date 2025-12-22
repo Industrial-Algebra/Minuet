@@ -292,7 +292,10 @@ impl<T: MinuetFloat, const DIM: usize> Query<T, DIM> {
                 // Analogy: target_context ⊛ source_context⁻¹ ⊛ source
                 // This extracts the transformation from source to source_context
                 // and applies it in the target_context
-                let transform = target_context.bind(&source_context.binding_inverse());
+                let source_inv = source_context.binding_inverse().ok_or_else(|| {
+                    MinuetError::InvalidQuery("source_context not invertible".into())
+                })?;
+                let transform = target_context.bind(&source_inv);
                 Ok(transform.bind(source))
             }
 
@@ -315,7 +318,7 @@ impl<T: MinuetFloat, const DIM: usize> Query<T, DIM> {
                 }
 
                 // Compute weighted combination of pattern keys
-                let mut combined = TropicalDualClifford::bundling_zero();
+                let mut combined: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
                 for (pattern, weight) in patterns {
                     let sub_query = Query {
                         pattern: pattern.clone(),
@@ -325,8 +328,7 @@ impl<T: MinuetFloat, const DIM: usize> Query<T, DIM> {
                         threshold: None,
                     };
                     let key = sub_query.compute_query_key()?;
-                    let beta = T::from_f64(*weight).unwrap();
-                    combined = combined.bundle(&key, beta);
+                    combined = combined.bundle(&key, *weight);
                 }
                 Ok(combined)
             }
@@ -391,7 +393,7 @@ mod tests {
 
     #[test]
     fn key_query_construction() {
-        let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
         let query = Query::key(key.clone()).limit(5).threshold(0.8);
 
         assert!(matches!(query.pattern, QueryPattern::Key(_)));
@@ -401,9 +403,9 @@ mod tests {
 
     #[test]
     fn analogy_query_construction() {
-        let source: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let source_ctx: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let target_ctx: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let source: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let source_ctx: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let target_ctx: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         let query = Query::analogy(source, source_ctx, target_ctx).with_cleanup(
             CleanupStrategy::Resonator {
@@ -427,8 +429,8 @@ mod tests {
 
     #[test]
     fn composite_query() {
-        let key1: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let key2: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+        let key1: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        let key2: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
 
         let patterns = vec![
             (QueryPattern::Key(key1), 0.7),

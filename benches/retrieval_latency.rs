@@ -13,13 +13,13 @@ fn retrieval_latency(c: &mut Criterion) {
             BenchmarkId::new("single_key/64", load),
             &load,
             |b, &load| {
-                let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+                let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
 
                 // Pre-load store
                 let mut keys = Vec::with_capacity(load);
                 for _ in 0..load {
-                    let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                    let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                    let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                    let value: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                     store.store(&key, &value).unwrap();
                     keys.push(key);
                 }
@@ -36,12 +36,12 @@ fn retrieval_latency(c: &mut Criterion) {
             BenchmarkId::new("single_key/256", load),
             &load,
             |b, &load| {
-                let store: BasicMemoryStore<f64, 256> = BasicMemoryStore::new();
+                let store: BasicMemoryStore<f64, 8> = BasicMemoryStore::new();
 
                 let mut keys = Vec::with_capacity(load);
                 for _ in 0..load {
-                    let key: TropicalDualClifford<f64, 256> = TropicalDualClifford::random();
-                    let value: TropicalDualClifford<f64, 256> = TropicalDualClifford::random();
+                    let key: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                    let value: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                     store.store(&key, &value).unwrap();
                     keys.push(key);
                 }
@@ -63,22 +63,22 @@ fn similarity_computation(c: &mut Criterion) {
     for dim in [64, 128, 256] {
         match dim {
             64 => {
-                let a: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                let b: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                 group.bench_function(BenchmarkId::new("pair", dim), |bench| {
                     bench.iter(|| black_box(a.similarity(&b)));
                 });
             }
             128 => {
-                let a: TropicalDualClifford<f64, 128> = TropicalDualClifford::random();
-                let b: TropicalDualClifford<f64, 128> = TropicalDualClifford::random();
+                let a: TropicalDualClifford<f64, 16> = TropicalDualClifford::random();
+                let b: TropicalDualClifford<f64, 16> = TropicalDualClifford::random();
                 group.bench_function(BenchmarkId::new("pair", dim), |bench| {
                     bench.iter(|| black_box(a.similarity(&b)));
                 });
             }
             256 => {
-                let a: TropicalDualClifford<f64, 256> = TropicalDualClifford::random();
-                let b: TropicalDualClifford<f64, 256> = TropicalDualClifford::random();
+                let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+                let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
                 group.bench_function(BenchmarkId::new("pair", dim), |bench| {
                     bench.iter(|| black_box(a.similarity(&b)));
                 });

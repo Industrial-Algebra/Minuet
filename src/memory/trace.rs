@@ -66,7 +66,7 @@ pub struct MemoryTrace<T: MinuetFloat, const DIM: usize, S = state::Unknown> {
     item_count: AtomicU64,
 
     /// Temperature parameter for bundling.
-    beta: T,
+    beta: f64,
 
     /// Phantom marker for state.
     _state: PhantomData<S>,
@@ -81,7 +81,7 @@ impl<T: MinuetFloat, const DIM: usize> MemoryTrace<T, DIM, state::Empty> {
     #[cfg_attr(feature = "contracts", ensures(result.item_count() == 0))]
     #[must_use]
     pub fn new() -> Self {
-        Self::with_beta(T::from_f64(1.0).unwrap())
+        Self::with_beta(1.0)
     }
 
     /// Create a new empty trace with specified temperature.
@@ -89,12 +89,12 @@ impl<T: MinuetFloat, const DIM: usize> MemoryTrace<T, DIM, state::Empty> {
     /// # Arguments
     ///
     /// * `beta` - Temperature parameter (higher = sharper bundling)
-    #[cfg_attr(feature = "contracts", requires(beta > T::zero()))]
+    #[cfg_attr(feature = "contracts", requires(beta > 0.0))]
     #[cfg_attr(feature = "contracts", ensures(result.item_count() == 0))]
     #[must_use]
-    pub fn with_beta(beta: T) -> Self {
+    pub fn with_beta(beta: f64) -> Self {
         Self {
-            trace: RwLock::new(TropicalDualClifford::bundling_zero()),
+            trace: RwLock::new(TropicalDualClifford::new()),
             capacity: CapacityTracker::new(DIM),
             operation_counter: AtomicU64::new(0),
             item_count: AtomicU64::new(0),
@@ -198,14 +198,14 @@ impl<T: MinuetFloat, const DIM: usize, S> MemoryTrace<T, DIM, S> {
 
     /// Get the temperature parameter.
     #[must_use]
-    pub fn beta(&self) -> T {
+    pub fn beta(&self) -> f64 {
         self.beta
     }
 
     /// Clear all stored items, resetting to empty state.
     pub fn clear(&self) {
         let mut trace = self.trace.write();
-        *trace = TropicalDualClifford::bundling_zero();
+        *trace = TropicalDualClifford::new();
         self.item_count.store(0, Ordering::SeqCst);
         self.capacity.reset();
     }
@@ -302,16 +302,17 @@ where
     }
 }
 
-/// Serializable snapshot of a trace.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound = "T: MinuetFloat")]
+/// Snapshot of a trace (for cloning/transferring, not serialization).
+///
+/// Note: Full serialization requires amari-fusion to implement Serialize for TropicalDualClifford.
+#[derive(Debug, Clone)]
 pub struct TraceSnapshot<T: MinuetFloat, const DIM: usize> {
     /// The trace data.
     pub trace: TropicalDualClifford<T, DIM>,
     /// Number of items stored.
     pub item_count: u64,
     /// Temperature parameter.
-    pub beta: T,
+    pub beta: f64,
     /// Operation counter.
     pub operation_counter: u64,
 }
@@ -322,13 +323,13 @@ mod tests {
 
     #[test]
     fn empty_trace_creation() {
-        let trace: MemoryTrace<f64, 64, state::Empty> = MemoryTrace::new();
+        let trace: MemoryTrace<f64, 8, state::Empty> = MemoryTrace::new();
         assert_eq!(trace.item_count(), 0);
     }
 
     #[test]
     fn store_increments_count() {
-        let trace: MemoryTrace<f64, 64, state::Empty> = MemoryTrace::new();
+        let trace: MemoryTrace<f64, 8, state::Empty> = MemoryTrace::new();
 
         let key = TropicalDualClifford::random();
         let value = TropicalDualClifford::random();
@@ -340,14 +341,14 @@ mod tests {
 
     #[test]
     fn snapshot_roundtrip() {
-        let trace: MemoryTrace<f64, 64, state::Empty> = MemoryTrace::with_beta(2.0);
+        let trace: MemoryTrace<f64, 8, state::Empty> = MemoryTrace::with_beta(2.0);
 
         let key = TropicalDualClifford::random();
         let value = TropicalDualClifford::random();
         trace.store(&key, &value).unwrap();
 
         let snapshot = trace.snapshot();
-        let restored = MemoryTrace::from_snapshot(snapshot);
+        let restored = MemoryTrace::<f64, 8, state::Unknown>::from_snapshot(snapshot);
 
         assert_eq!(restored.item_count(), trace.item_count());
         assert!((restored.beta() - trace.beta()).abs() < 1e-10);
