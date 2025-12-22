@@ -183,15 +183,20 @@ pub mod precision {
 pub mod dimensions {
     /// Compute theoretical capacity for a given dimension.
     ///
-    /// Capacity scales as O(DIM / log DIM).
+    /// Capacity scales as O(algebra_dim / log(algebra_dim)), where
+    /// `algebra_dim = 2^DIM` is the number of basis elements in the Clifford algebra.
+    ///
+    /// For DIM=8: algebra_dim=256, capacity ≈ 256/8 = 32
+    /// For DIM=16: algebra_dim=65536, capacity ≈ 65536/16 = 4096
     #[must_use]
     pub const fn theoretical_capacity(dim: usize) -> usize {
-        // log2(dim) approximation for const context
-        let log_dim = (usize::BITS - dim.leading_zeros()) as usize;
-        if log_dim == 0 {
+        // algebra_dim = 2^dim (number of basis elements)
+        let algebra_dim = 1usize << dim;
+        // log2(algebra_dim) = dim (by definition)
+        if dim == 0 {
             0
         } else {
-            dim / log_dim
+            algebra_dim / dim
         }
     }
 
@@ -232,8 +237,11 @@ mod tests {
 
     #[test]
     fn dimension_utilities() {
-        assert_eq!(dimensions::theoretical_capacity(256), 32); // 256/8
-        assert_eq!(dimensions::theoretical_capacity(1024), 102); // 1024/10
+        // theoretical_capacity(dim) = 2^dim / dim
+        // For DIM=8: 2^8 / 8 = 256 / 8 = 32
+        assert_eq!(dimensions::theoretical_capacity(8), 32);
+        // For DIM=10: 2^10 / 10 = 1024 / 10 = 102
+        assert_eq!(dimensions::theoretical_capacity(10), 102);
         assert!(dimensions::is_power_of_two(256));
         assert!(!dimensions::is_power_of_two(257));
         assert_eq!(dimensions::grade_count(8), 9);

@@ -112,7 +112,7 @@ impl<T: MinuetFloat> CapacityTracker<T> {
     /// Estimate SNR for a given item count.
     ///
     /// SNR decreases as 1/sqrt(n) where n is the number of items,
-    /// normalized by dimension.
+    /// normalized by algebra dimension (2^DIM, not DIM).
     #[cfg_attr(feature = "contracts", ensures(result >= T::zero()))]
     #[must_use]
     pub fn estimate_snr(&self, item_count: u64) -> T {
@@ -120,11 +120,12 @@ impl<T: MinuetFloat> CapacityTracker<T> {
             return T::infinity();
         }
 
-        // SNR ≈ sqrt(DIM) / sqrt(n)
-        let dim_f = T::from_usize(self.dim).unwrap();
+        // SNR ≈ sqrt(algebra_dim / n), where algebra_dim = 2^DIM
+        let algebra_dim = 1usize << self.dim;
+        let dim_f = T::from_usize(algebra_dim).unwrap();
         let n_f = T::from_u64(item_count).unwrap();
 
-        dim_f.sqrt() / n_f.sqrt()
+        (dim_f / n_f).sqrt()
     }
 
     /// Get the SNR threshold.
@@ -165,10 +166,11 @@ impl<T: MinuetFloat> CapacityTracker<T> {
             Some(0)
         } else {
             // Solve for n where SNR(n) = threshold
-            // sqrt(DIM) / sqrt(n) = threshold
-            // n = DIM / threshold^2
+            // sqrt(algebra_dim / n) = threshold
+            // n = algebra_dim / threshold^2
+            let algebra_dim = 1usize << self.dim;
             let threshold_sq = self.snr_threshold * self.snr_threshold;
-            let max_items = T::from_usize(self.dim).unwrap() / threshold_sq;
+            let max_items = T::from_usize(algebra_dim).unwrap() / threshold_sq;
             let remaining_f = max_items - T::from_u64(item_count).unwrap();
             if remaining_f > T::zero() {
                 Some(remaining_f.to_usize().unwrap_or(0))
@@ -270,7 +272,8 @@ mod tests {
 
     #[test]
     fn snr_decreases_with_items() {
-        let tracker: CapacityTracker<f64> = CapacityTracker::new(256);
+        // DIM=8 gives algebra_dim = 2^8 = 256 basis elements
+        let tracker: CapacityTracker<f64> = CapacityTracker::new(8);
 
         let snr_1 = tracker.estimate_snr(1);
         let snr_10 = tracker.estimate_snr(10);
@@ -278,11 +281,15 @@ mod tests {
 
         assert!(snr_1 > snr_10);
         assert!(snr_10 > snr_100);
+
+        // Verify expected SNR: sqrt(algebra_dim / n)
+        // For n=1: sqrt(256/1) = 16
+        assert!((snr_1 - 16.0).abs() < 0.1);
     }
 
     #[test]
     fn empty_has_infinite_snr() {
-        let tracker: CapacityTracker<f64> = CapacityTracker::new(256);
+        let tracker: CapacityTracker<f64> = CapacityTracker::new(8);
         let snr = tracker.estimate_snr(0);
         assert!(snr.is_infinite());
     }
@@ -290,8 +297,10 @@ mod tests {
     #[test]
     fn capacity_estimation() {
         // At 80% accuracy, should be able to store more than at 90%
-        let cap_80 = estimation::capacity_at_accuracy(256, 0.8);
-        let cap_90 = estimation::capacity_at_accuracy(256, 0.9);
+        // Note: estimation functions use algebra_dim (256 for DIM=8) as input
+        let algebra_dim = 256; // 2^8
+        let cap_80 = estimation::capacity_at_accuracy(algebra_dim, 0.8);
+        let cap_90 = estimation::capacity_at_accuracy(algebra_dim, 0.9);
         assert!(cap_80 > cap_90);
     }
 

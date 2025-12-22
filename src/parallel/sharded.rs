@@ -395,8 +395,13 @@ mod tests {
         let memory: ShardedMemory<f64, 8, 8> = ShardedMemory::new();
 
         let capacity = memory.capacity();
-        // Total capacity should be roughly 8x single trace capacity
-        assert!(capacity.theoretical_capacity >= 8 * 8); // At least 8 per shard
+        // Total capacity should be 8 shards * (2^8 / 8) = 8 * 32 = 256
+        // With DIM=8, each shard has capacity 256/8 = 32
+        assert!(
+            capacity.theoretical_capacity >= 8 * 32,
+            "Expected at least 256, got {}",
+            capacity.theoretical_capacity
+        );
     }
 
     #[test]
