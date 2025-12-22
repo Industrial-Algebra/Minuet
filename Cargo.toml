@@ -1,6 +1,103 @@
 [package]
-name = "Minuet"
+name = "minuet"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+description = "A holographic database built on tropical-dual-Clifford algebra"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/justinelliottcobb/Minuet"
+keywords = ["holographic", "memory", "algebra", "clifford", "database"]
+categories = ["database", "science", "mathematics"]
 
 [dependencies]
+# Core algebra
+amari-fusion = { version = "0.12.2", features = ["holographic", "serialize"] }
+
+# Parallelism
+rayon = "1.10"
+crossbeam = "0.8"
+parking_lot = "0.12"
+
+# Error handling
+thiserror = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+
+# Logging/tracing
+tracing = "0.1"
+
+# Formal verification contracts
+creusot-contracts = { version = "0.3", optional = true }
+
+# High-precision numerics
+num-traits = "0.2"
+num-bigfloat = { version = "1.7", optional = true }
+
+# GPU support (optional)
+wgpu = { version = "0.19", optional = true }
+bytemuck = { version = "1.14", features = ["derive"], optional = true }
+
+# Persistence (optional)
+rocksdb = { version = "0.22", optional = true }
+
+# Distributed (optional)
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"], optional = true }
+tonic = { version = "0.11", optional = true }
+prost = { version = "0.12", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.5"
+test-case = "3.3"
+approx = "0.5"
+tempfile = "3.14"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+rand = "0.8"
+rand_chacha = "0.3"
+
+[features]
+default = []
+contracts = ["creusot-contracts"]
+high-precision = ["num-bigfloat"]
+gpu = ["wgpu", "bytemuck"]
+persistence = ["rocksdb"]
+distributed = ["tokio", "tonic", "prost"]
+full = ["gpu", "persistence", "distributed", "high-precision"]
+
+[[bench]]
+name = "binding_throughput"
+harness = false
+
+[[bench]]
+name = "retrieval_latency"
+harness = false
+
+[[bench]]
+name = "capacity_scaling"
+harness = false
+
+[[bench]]
+name = "parallel_ops"
+harness = false
+
+[[example]]
+name = "molecular_analogy"
+
+[[example]]
+name = "code_semantic_search"
+
+[[example]]
+name = "motor_primitives"
+
+[[example]]
+name = "working_memory_agent"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.bench]
+lto = true
+codegen-units = 1
