@@ -63,23 +63,28 @@ fn main() -> minuet::Result<()> {
 
         // Find similar primitive
         if let Some((nearest, sim)) = primitives.nearest(&composed) {
-            println!("  Nearest single primitive: {} (similarity: {:.3})", nearest, sim);
+            println!(
+                "  Nearest single primitive: {} (similarity: {:.3})",
+                nearest, sim
+            );
         }
     }
 
     // Compose multiple steps
     println!("\nMulti-step composition: forward -> turn_left -> forward");
 
-    if let (Some(step1), Some(step2)) = (
-        primitives.get("move_forward"),
-        primitives.get("turn_left"),
-    ) {
+    if let (Some(step1), Some(step2)) =
+        (primitives.get("move_forward"), primitives.get("turn_left"))
+    {
         use amari_fusion::holographic::Bindable;
 
         let composed = step2.bind(step1);
         if let Some(step3) = primitives.get("move_forward") {
             let final_motion = step3.bind(&composed);
-            println!("  Final motion computed (magnitude: {:.3})", final_motion.magnitude());
+            println!(
+                "  Final motion computed (magnitude: {:.3})",
+                final_motion.magnitude()
+            );
         }
     }
 

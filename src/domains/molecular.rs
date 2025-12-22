@@ -2,7 +2,7 @@
 //!
 //! Encoders for molecular structures (SMILES, fingerprints).
 
-use amari_fusion::holographic::TropicalDualClifford;
+use amari_fusion::TropicalDualClifford;
 
 use crate::precision::MinuetFloat;
 
@@ -11,7 +11,7 @@ use super::DomainEncoder;
 /// Encoder for molecular fingerprints.
 ///
 /// Converts molecular fingerprint bit vectors into holographic representations.
-pub struct FingerprintEncoder<T, const DIM: usize> {
+pub struct FingerprintEncoder<T: MinuetFloat, const DIM: usize> {
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -66,7 +66,7 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for FingerprintEnco
 ///
 /// Encodes SMILES molecular notation into holographic representations
 /// using character n-grams and structural features.
-pub struct SmilesEncoder<T, const DIM: usize> {
+pub struct SmilesEncoder<T: MinuetFloat, const DIM: usize> {
     /// N-gram size for character encoding.
     ngram_size: usize,
     _phantom: std::marker::PhantomData<T>,

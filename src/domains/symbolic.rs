@@ -2,10 +2,9 @@
 //!
 //! Encoders for code ASTs and symbolic expressions.
 
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 
 use crate::binding::Codebook;
 use crate::precision::MinuetFloat;
@@ -26,15 +25,9 @@ pub enum AstNode {
         right: Box<AstNode>,
     },
     /// Unary operation.
-    UnaryOp {
-        op: String,
-        operand: Box<AstNode>,
-    },
+    UnaryOp { op: String, operand: Box<AstNode> },
     /// Function call.
-    Call {
-        name: String,
-        args: Vec<AstNode>,
-    },
+    Call { name: String, args: Vec<AstNode> },
     /// Block of statements.
     Block(Vec<AstNode>),
     /// Assignment.
@@ -83,7 +76,7 @@ impl AstNode {
 /// - Each node type has a characteristic representation
 /// - Children are bound compositionally
 /// - Structure is preserved in the representation
-pub struct AstEncoder<T, const DIM: usize> {
+pub struct AstEncoder<T: MinuetFloat, const DIM: usize> {
     /// Codebook for node type symbols.
     codebook: Codebook<T, DIM>,
     _phantom: PhantomData<T>,
@@ -217,7 +210,7 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for AstEncoder<T, D
 }
 
 /// Semantic similarity between code fragments.
-pub struct CodeSimilarity<T, const DIM: usize> {
+pub struct CodeSimilarity<T: MinuetFloat, const DIM: usize> {
     encoder: AstEncoder<T, DIM>,
 }
 
@@ -253,25 +246,13 @@ mod tests {
         let encoder: AstEncoder<f64, 64> = AstEncoder::new();
 
         // x + y
-        let expr1 = AstNode::binary(
-            "+",
-            AstNode::ident("x"),
-            AstNode::ident("y"),
-        );
+        let expr1 = AstNode::binary("+", AstNode::ident("x"), AstNode::ident("y"));
 
         // x + z
-        let expr2 = AstNode::binary(
-            "+",
-            AstNode::ident("x"),
-            AstNode::ident("z"),
-        );
+        let expr2 = AstNode::binary("+", AstNode::ident("x"), AstNode::ident("z"));
 
         // x * y
-        let expr3 = AstNode::binary(
-            "*",
-            AstNode::ident("x"),
-            AstNode::ident("y"),
-        );
+        let expr3 = AstNode::binary("*", AstNode::ident("x"), AstNode::ident("y"));
 
         let enc1 = encoder.encode(&expr1);
         let enc2 = encoder.encode(&expr2);
@@ -291,17 +272,9 @@ mod tests {
     fn code_similarity() {
         let sim: CodeSimilarity<f64, 64> = CodeSimilarity::new();
 
-        let expr1 = AstNode::binary(
-            "+",
-            AstNode::ident("a"),
-            AstNode::ident("b"),
-        );
+        let expr1 = AstNode::binary("+", AstNode::ident("a"), AstNode::ident("b"));
 
-        let expr2 = AstNode::binary(
-            "+",
-            AstNode::ident("a"),
-            AstNode::ident("b"),
-        );
+        let expr2 = AstNode::binary("+", AstNode::ident("a"), AstNode::ident("b"));
 
         // Identical expressions should have high similarity
         let s = sim.similarity(&expr1, &expr2);

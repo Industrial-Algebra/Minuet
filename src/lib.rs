@@ -61,7 +61,10 @@
 use creusot_contracts::*;
 
 // Re-export core types from amari-fusion
-pub use amari_fusion::holographic::{Bindable, RetrievalResult, TropicalDualClifford};
+pub use amari_fusion::{
+    holographic::{Bindable, RetrievalResult},
+    TropicalDualClifford,
+};
 
 // Core modules
 pub mod binding;
@@ -220,7 +223,7 @@ pub mod prelude {
     pub use crate::retrieval::{Resonator, Temperature};
 
     // Re-export key amari-fusion types
-    pub use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+    pub use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 }
 
 #[cfg(test)]

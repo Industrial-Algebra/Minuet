@@ -6,7 +6,7 @@
 
 use std::marker::PhantomData;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "contracts")]
@@ -43,7 +43,7 @@ pub struct TransformMetadata {
 /// * `DIM` - Representation dimensionality
 /// * `Inv` - Invertibility marker
 #[derive(Debug, Clone)]
-pub struct Transform<T, const DIM: usize, Inv = MaybeInvertible> {
+pub struct Transform<T: MinuetFloat, const DIM: usize, Inv = MaybeInvertible> {
     /// The transformation as a TDC element (typically a versor).
     repr: TropicalDualClifford<T, DIM>,
 
@@ -163,10 +163,7 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, MaybeInvertible> {
     }
 
     /// Verify that this transform is invertible.
-    pub fn verify_invertible(
-        self,
-        epsilon: T,
-    ) -> Result<Transform<T, DIM, Invertible>> {
+    pub fn verify_invertible(self, epsilon: T) -> Result<Transform<T, DIM, Invertible>> {
         let mag = self.repr.magnitude();
 
         if mag < epsilon {
@@ -199,7 +196,10 @@ impl<T: MinuetFloat, const DIM: usize, Inv> Transform<T, DIM, Inv> {
     ///
     /// Computes: `result = other ⊛ self`
     #[must_use]
-    pub fn compose<Inv2>(&self, other: &Transform<T, DIM, Inv2>) -> Transform<T, DIM, MaybeInvertible> {
+    pub fn compose<Inv2>(
+        &self,
+        other: &Transform<T, DIM, Inv2>,
+    ) -> Transform<T, DIM, MaybeInvertible> {
         let composed = other.repr.bind(&self.repr);
 
         Transform {
@@ -259,7 +259,10 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, Invertible> {
     ///
     /// Computes: `result = transform⁻¹ ⊛ input`
     #[must_use]
-    pub fn apply_inverse(&self, input: &TropicalDualClifford<T, DIM>) -> TropicalDualClifford<T, DIM> {
+    pub fn apply_inverse(
+        &self,
+        input: &TropicalDualClifford<T, DIM>,
+    ) -> TropicalDualClifford<T, DIM> {
         let inv = self.repr.binding_inverse();
         inv.bind(input)
     }
@@ -306,10 +309,7 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, Invertible> {
         Transform {
             repr: interpolated,
             metadata: TransformMetadata {
-                description: Some(format!(
-                    "Interpolated (t={:.2})",
-                    t.to_f64().unwrap_or(0.0)
-                )),
+                description: Some(format!("Interpolated (t={:.2})", t.to_f64().unwrap_or(0.0))),
                 source_examples: Vec::new(),
                 fidelity: self.metadata.fidelity,
                 is_versor: false, // Interpolation may not preserve versor property
@@ -321,7 +321,7 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, Invertible> {
 
 /// Builder for constructing transforms with specific properties.
 #[derive(Debug)]
-pub struct TransformBuilder<T, const DIM: usize> {
+pub struct TransformBuilder<T: MinuetFloat, const DIM: usize> {
     examples: Vec<(TropicalDualClifford<T, DIM>, TropicalDualClifford<T, DIM>)>,
     description: Option<String>,
 }

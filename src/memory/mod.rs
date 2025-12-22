@@ -9,6 +9,8 @@ mod store;
 mod trace;
 
 pub use capacity::{CapacityInfo, CapacityTracker};
-pub use query::{BitMask, CleanupStrategy, Query, QueryPattern, QueryResult, QueryStats, RankedResult};
-pub use store::{MergeResult, MemoryStore, StoreReceipt};
-pub use trace::MemoryTrace;
+pub use query::{
+    BitMask, CleanupStrategy, Query, QueryPattern, QueryResult, QueryStats, RankedResult,
+};
+pub use store::{MemoryStore, MergeResult, StoreReceipt};
+pub use trace::{MemoryTrace, TraceSnapshot};

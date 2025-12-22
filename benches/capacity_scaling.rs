@@ -2,7 +2,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use minuet::memory::{BasicMemoryStore, MemoryStore};
 
 fn store_at_various_loads(c: &mut Criterion) {
@@ -39,23 +39,19 @@ fn capacity_info_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("capacity_info");
 
     for load in [10, 100, 500] {
-        group.bench_with_input(
-            BenchmarkId::new("compute", load),
-            &load,
-            |b, &load| {
-                let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
+        group.bench_with_input(BenchmarkId::new("compute", load), &load, |b, &load| {
+            let store: BasicMemoryStore<f64, 64> = BasicMemoryStore::new();
 
-                for _ in 0..load {
-                    let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                    let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                    store.store(&key, &value).unwrap();
-                }
+            for _ in 0..load {
+                let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                let value: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+                store.store(&key, &value).unwrap();
+            }
 
-                b.iter(|| {
-                    black_box(store.capacity());
-                });
-            },
-        );
+            b.iter(|| {
+                black_box(store.capacity());
+            });
+        });
     }
 
     group.finish();

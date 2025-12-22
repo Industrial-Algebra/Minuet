@@ -9,14 +9,14 @@ use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use amari_fusion::holographic::TropicalDualClifford;
+use amari_fusion::TropicalDualClifford;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "contracts")]
 use creusot_contracts::*;
 
-use crate::error::{MinuetError, Result};
+use crate::error::Result;
 use crate::precision::MinuetFloat;
 
 /// Properties for constrained symbol generation.
@@ -147,7 +147,7 @@ impl<T: MinuetFloat, const DIM: usize> SymbolGenerator<T, DIM> for StandardGener
 /// - Cleanup targets for resonator networks
 /// - Domain-specific symbol generation
 #[derive(Debug)]
-pub struct Codebook<T, const DIM: usize> {
+pub struct Codebook<T: MinuetFloat, const DIM: usize> {
     /// Symbol name to representation mapping.
     symbols: RwLock<HashMap<String, TropicalDualClifford<T, DIM>>>,
 
@@ -447,7 +447,8 @@ where
 
 /// Serializable codebook snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct CodebookSnapshot<T, const DIM: usize> {
+#[serde(bound = "T: MinuetFloat")]
+struct CodebookSnapshot<T: MinuetFloat, const DIM: usize> {
     symbols: HashMap<String, TropicalDualClifford<T, DIM>>,
     metadata: CodebookMetadata,
 }

@@ -209,8 +209,6 @@ impl<T: MinuetFloat> Clone for CapacityTracker<T> {
 
 /// Capacity estimation utilities.
 pub mod estimation {
-    use super::*;
-
     /// Estimate capacity at a target retrieval accuracy.
     ///
     /// # Arguments

@@ -8,10 +8,10 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
-use crate::memory::MemoryTrace;
+use crate::memory::{MemoryTrace, TraceSnapshot};
 use crate::precision::MinuetFloat;
 
-use amari_fusion::holographic::TropicalDualClifford;
+use amari_fusion::TropicalDualClifford;
 
 /// Metadata about a snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,7 +34,8 @@ pub struct SnapshotMetadata {
 
 /// A serializable snapshot of a memory trace.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Snapshot<T, const DIM: usize> {
+#[serde(bound = "T: MinuetFloat")]
+pub struct Snapshot<T: MinuetFloat, const DIM: usize> {
     /// The trace data.
     pub trace: TropicalDualClifford<T, DIM>,
 
@@ -71,7 +72,7 @@ impl<T: MinuetFloat + Serialize + for<'de> Deserialize<'de>, const DIM: usize> S
 
     /// Convert back to a memory trace.
     pub fn into_trace(self) -> Result<MemoryTrace<T, DIM>> {
-        let snapshot = crate::memory::trace::TraceSnapshot {
+        let snapshot = TraceSnapshot {
             trace: self.trace,
             item_count: self.item_count,
             beta: self.beta,

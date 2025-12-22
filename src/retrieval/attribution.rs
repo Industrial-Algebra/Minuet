@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "contracts")]
@@ -67,7 +67,7 @@ impl AttributionResult {
 ///
 /// Uses the dual number component to track gradients/sensitivity
 /// with respect to each stored binding.
-pub struct Attribution<T, const DIM: usize> {
+pub struct Attribution<T: MinuetFloat, const DIM: usize> {
     /// Stored bindings with their IDs.
     bindings: Vec<(u64, TropicalDualClifford<T, DIM>)>,
 
@@ -173,7 +173,8 @@ impl<T: MinuetFloat, const DIM: usize> Attribution<T, DIM> {
         }
 
         // Sort by contribution
-        let mut top_contributors: Vec<(u64, f64)> = contributions.iter().map(|(&k, &v)| (k, v)).collect();
+        let mut top_contributors: Vec<(u64, f64)> =
+            contributions.iter().map(|(&k, &v)| (k, v)).collect();
 
         top_contributors.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         top_contributors.truncate(self.max_attributions);
@@ -219,7 +220,7 @@ impl<T: MinuetFloat, const DIM: usize> Default for Attribution<T, DIM> {
 
 /// Builder for attribution queries.
 #[derive(Debug)]
-pub struct AttributionQuery<T, const DIM: usize> {
+pub struct AttributionQuery<T: MinuetFloat, const DIM: usize> {
     query: TropicalDualClifford<T, DIM>,
     result: TropicalDualClifford<T, DIM>,
     store_ids: Option<Vec<u64>>,
@@ -229,10 +230,7 @@ pub struct AttributionQuery<T, const DIM: usize> {
 impl<T: MinuetFloat, const DIM: usize> AttributionQuery<T, DIM> {
     /// Create a new attribution query.
     #[must_use]
-    pub fn new(
-        query: TropicalDualClifford<T, DIM>,
-        result: TropicalDualClifford<T, DIM>,
-    ) -> Self {
+    pub fn new(query: TropicalDualClifford<T, DIM>, result: TropicalDualClifford<T, DIM>) -> Self {
         Self {
             query,
             result,

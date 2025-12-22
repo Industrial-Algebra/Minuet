@@ -5,8 +5,7 @@
 
 use std::marker::PhantomData;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
-use serde::{Deserialize, Serialize};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 
 #[cfg(feature = "contracts")]
 use creusot_contracts::*;
@@ -18,7 +17,7 @@ use crate::precision::MinuetFloat;
 ///
 /// This trait extends the base `Bindable` trait with additional operations
 /// for grade-aware computation and algebraic verification.
-pub trait BindingAlgebra<T: MinuetFloat, const DIM: usize>: Bindable<T, DIM> {
+pub trait BindingAlgebra<T: MinuetFloat, const DIM: usize>: Bindable {
     /// Bind with verification that the result is well-formed.
     ///
     /// # Errors
@@ -163,7 +162,7 @@ impl<T: MinuetFloat, const DIM: usize> BindingAlgebra<T, DIM> for TropicalDualCl
 }
 
 /// Grade projection utilities.
-pub struct GradeProjection<T, const DIM: usize> {
+pub struct GradeProjection<T: MinuetFloat, const DIM: usize> {
     _phantom: PhantomData<T>,
 }
 
@@ -219,14 +218,16 @@ impl<T: MinuetFloat, const DIM: usize> GradeProjection<T, DIM> {
 ///
 /// Uses phantom types to track algebraic properties at compile time.
 #[derive(Debug, Clone)]
-pub struct VerifiedElement<T, const DIM: usize, Inv, Norm, Grade> {
+pub struct VerifiedElement<T: MinuetFloat, const DIM: usize, Inv, Norm, Grade> {
     inner: TropicalDualClifford<T, DIM>,
     _inv: PhantomData<Inv>,
     _norm: PhantomData<Norm>,
     _grade: PhantomData<Grade>,
 }
 
-impl<T: MinuetFloat, const DIM: usize> VerifiedElement<T, DIM, MaybeInvertible, Unnormalized, MixedGrade> {
+impl<T: MinuetFloat, const DIM: usize>
+    VerifiedElement<T, DIM, MaybeInvertible, Unnormalized, MixedGrade>
+{
     /// Create a new unverified element.
     #[must_use]
     pub fn new(inner: TropicalDualClifford<T, DIM>) -> Self {

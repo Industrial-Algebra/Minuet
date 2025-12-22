@@ -14,7 +14,7 @@ use minuet::{
     retrieval::{Resonator, ResonatorConfig, Temperature},
 };
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 
 /// A simple working memory agent.
 struct WorkingMemoryAgent {
@@ -100,7 +100,10 @@ fn main() -> minuet::Result<()> {
     let queries = ["color:walls", "appliance:large", "furniture:seating"];
     for query in queries {
         if let Some((answer, confidence)) = agent.recall(query) {
-            println!("  Q: {} -> A: {} (confidence: {:.2})", query, answer, confidence);
+            println!(
+                "  Q: {} -> A: {} (confidence: {:.2})",
+                query, answer, confidence
+            );
         } else {
             println!("  Q: {} -> not found", query);
         }
@@ -122,7 +125,10 @@ fn main() -> minuet::Result<()> {
 
     for query in ["color:walls", "furniture:seating", "furniture:sleeping"] {
         if let Some((answer, confidence)) = agent.recall(query) {
-            println!("  Q: {} -> A: {} (confidence: {:.2})", query, answer, confidence);
+            println!(
+                "  Q: {} -> A: {} (confidence: {:.2})",
+                query, answer, confidence
+            );
         } else {
             println!("  Q: {} -> not found", query);
         }
@@ -135,7 +141,10 @@ fn main() -> minuet::Result<()> {
 
     for query in ["color:walls", "appliance:large"] {
         if let Some((answer, confidence)) = agent.recall(query) {
-            println!("  Q: {} -> A: {} (confidence: {:.2})", query, answer, confidence);
+            println!(
+                "  Q: {} -> A: {} (confidence: {:.2})",
+                query, answer, confidence
+            );
         }
     }
 

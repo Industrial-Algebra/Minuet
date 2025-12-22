@@ -4,7 +4,7 @@
 
 use std::marker::PhantomData;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 
 use crate::precision::MinuetFloat;
 
@@ -107,7 +107,10 @@ impl RigidTransform {
     /// Create a new rigid transform.
     #[must_use]
     pub fn new(rotation: Rotation3, translation: Point3) -> Self {
-        Self { rotation, translation }
+        Self {
+            rotation,
+            translation,
+        }
     }
 
     /// Identity transform.
@@ -133,7 +136,7 @@ impl RigidTransform {
 ///
 /// Encodes SE(3) elements (rotations + translations) as motors in
 /// Clifford algebra, which are naturally represented in TDC.
-pub struct SE3Encoder<T, const DIM: usize> {
+pub struct SE3Encoder<T: MinuetFloat, const DIM: usize> {
     _phantom: PhantomData<T>,
 }
 
@@ -190,7 +193,7 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for SE3Encoder<T, D
 /// Motor primitive library for robotics.
 ///
 /// Pre-computed motor primitives for common movements.
-pub struct MotorPrimitives<T, const DIM: usize> {
+pub struct MotorPrimitives<T: MinuetFloat, const DIM: usize> {
     encoder: SE3Encoder<T, DIM>,
     primitives: Vec<(String, TropicalDualClifford<T, DIM>)>,
 }
@@ -233,7 +236,12 @@ impl<T: MinuetFloat, const DIM: usize> MotorPrimitives<T, DIM> {
     pub fn nearest(&self, query: &TropicalDualClifford<T, DIM>) -> Option<(&str, f64)> {
         self.primitives
             .iter()
-            .map(|(name, prim)| (name.as_str(), query.similarity(prim).to_f64().unwrap_or(0.0)))
+            .map(|(name, prim)| {
+                (
+                    name.as_str(),
+                    query.similarity(prim).to_f64().unwrap_or(0.0),
+                )
+            })
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
     }
 }

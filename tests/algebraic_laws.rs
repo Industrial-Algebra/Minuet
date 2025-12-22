@@ -5,7 +5,7 @@
 
 use proptest::prelude::*;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use minuet::binding::BindingAlgebra;
 
 /// Strategy for generating arbitrary TDC elements.

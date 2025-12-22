@@ -74,11 +74,7 @@ fn main() -> minuet::Result<()> {
     println!("Query 2: Analogy - naproxen:X :: aspirin:COX-2");
     println!("  (What might naproxen target, if similar to aspirin?)");
 
-    let analogy_query = Query::analogy(
-        aspirin.clone(),
-        cox2.clone(),
-        naproxen.clone(),
-    );
+    let analogy_query = Query::analogy(aspirin.clone(), cox2.clone(), naproxen.clone());
 
     let analogy_result = memory.query(analogy_query)?;
 

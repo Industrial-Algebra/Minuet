@@ -6,7 +6,7 @@
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +52,7 @@ pub mod state {
 /// - Store operations monotonically increase item count
 /// - SNR decreases monotonically as items are added
 #[derive(Debug)]
-pub struct MemoryTrace<T, const DIM: usize, S = state::Unknown> {
+pub struct MemoryTrace<T: MinuetFloat, const DIM: usize, S = state::Unknown> {
     /// The superposed holographic trace.
     trace: RwLock<TropicalDualClifford<T, DIM>>,
 
@@ -304,7 +304,8 @@ where
 
 /// Serializable snapshot of a trace.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TraceSnapshot<T, const DIM: usize> {
+#[serde(bound = "T: MinuetFloat")]
+pub struct TraceSnapshot<T: MinuetFloat, const DIM: usize> {
     /// The trace data.
     pub trace: TropicalDualClifford<T, DIM>,
     /// Number of items stored.

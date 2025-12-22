@@ -6,15 +6,20 @@
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use amari_fusion::holographic::{Bindable, RetrievalResult, TropicalDualClifford};
+use amari_fusion::{
+    holographic::{Bindable, RetrievalResult},
+    TropicalDualClifford,
+};
 use parking_lot::RwLock;
 use rayon::prelude::*;
 
 #[cfg(feature = "contracts")]
 use creusot_contracts::*;
 
-use crate::error::{CapacityWarning, MinuetError, Result};
-use crate::memory::{CapacityInfo, MemoryStore, MemoryTrace, Query, QueryResult, StoreReceipt, MergeResult};
+use crate::error::{MinuetError, Result};
+use crate::memory::{
+    CapacityInfo, MemoryStore, MemoryTrace, MergeResult, Query, QueryResult, StoreReceipt,
+};
 use crate::precision::MinuetFloat;
 
 /// Hasher for determining shard assignment.
@@ -68,7 +73,7 @@ impl Default for ShardHasher {
 ///
 /// Total capacity ~ num_shards * single_trace_capacity
 /// Query latency ~ single_trace_latency (parallel)
-pub struct ShardedMemory<T, const DIM: usize, const SHARDS: usize> {
+pub struct ShardedMemory<T: MinuetFloat, const DIM: usize, const SHARDS: usize> {
     /// Individual shard traces.
     shards: [RwLock<MemoryTrace<T, DIM>>; SHARDS],
 
@@ -93,9 +98,8 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
     #[must_use]
     pub fn with_beta(beta: T) -> Self {
         // Initialize array of traces
-        let shards = std::array::from_fn(|_| {
-            RwLock::new(MemoryTrace::with_beta(beta).into_unknown())
-        });
+        let shards =
+            std::array::from_fn(|_| RwLock::new(MemoryTrace::with_beta(beta).into_unknown()));
 
         Self {
             shards,
@@ -108,9 +112,8 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
     /// Create with specific hasher for reproducibility.
     #[must_use]
     pub fn with_hasher(hasher: ShardHasher, beta: T) -> Self {
-        let shards = std::array::from_fn(|_| {
-            RwLock::new(MemoryTrace::with_beta(beta).into_unknown())
-        });
+        let shards =
+            std::array::from_fn(|_| RwLock::new(MemoryTrace::with_beta(beta).into_unknown()));
 
         Self {
             shards,
@@ -140,17 +143,11 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
         &self,
         pairs: &[(TropicalDualClifford<T, DIM>, TropicalDualClifford<T, DIM>)],
     ) -> Result<Vec<StoreReceipt>> {
-        pairs
-            .par_iter()
-            .map(|(k, v)| self.store(k, v))
-            .collect()
+        pairs.par_iter().map(|(k, v)| self.store(k, v)).collect()
     }
 
     /// Retrieve broadcasts to all shards in parallel, merges results.
-    pub fn retrieve(
-        &self,
-        key: &TropicalDualClifford<T, DIM>,
-    ) -> Result<RetrievalResult<T, DIM>> {
+    pub fn retrieve(&self, key: &TropicalDualClifford<T, DIM>) -> Result<RetrievalResult<T, DIM>> {
         // Query all shards in parallel
         let results: Vec<TropicalDualClifford<T, DIM>> = self
             .shards
@@ -168,11 +165,7 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
         }
 
         // Compute aggregate confidence
-        let total_items: u64 = self
-            .shards
-            .iter()
-            .map(|s| s.read().item_count())
-            .sum();
+        let total_items: u64 = self.shards.iter().map(|s| s.read().item_count()).sum();
 
         let capacity = self.capacity();
 
@@ -207,9 +200,7 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
             theoretical_capacity: total_capacity,
             estimated_snr: min_snr,
             snr_threshold: 0.5,
-            remaining_stores: Some(
-                ((1.0 - utilization) * total_capacity as f64) as usize
-            ),
+            remaining_stores: Some(((1.0 - utilization) * total_capacity as f64) as usize),
             utilization,
         }
     }
@@ -254,10 +245,7 @@ impl<T: MinuetFloat, const DIM: usize, const SHARDS: usize> ShardedMemory<T, DIM
     /// Get the distribution of items across shards.
     #[must_use]
     pub fn distribution(&self) -> Vec<u64> {
-        self.shards
-            .iter()
-            .map(|s| s.read().item_count())
-            .collect()
+        self.shards.iter().map(|s| s.read().item_count()).collect()
     }
 
     /// Check for uneven distribution (potential hotspot).
@@ -311,10 +299,7 @@ where
         ShardedMemory::store_batch(self, pairs)
     }
 
-    fn retrieve(
-        &self,
-        key: &TropicalDualClifford<T, DIM>,
-    ) -> Result<RetrievalResult<T, DIM>> {
+    fn retrieve(&self, key: &TropicalDualClifford<T, DIM>) -> Result<RetrievalResult<T, DIM>> {
         ShardedMemory::retrieve(self, key)
     }
 

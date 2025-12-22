@@ -1,7 +1,7 @@
 //! Append-only journal for durability.
 
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::Result;
 use crate::precision::MinuetFloat;
 
-use amari_fusion::holographic::TropicalDualClifford;
+use amari_fusion::TropicalDualClifford;
 
 /// Configuration for the journal.
 #[derive(Debug, Clone)]
@@ -32,7 +32,8 @@ impl Default for JournalConfig {
 
 /// A journal entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum JournalEntry<T, const DIM: usize> {
+#[serde(bound = "T: MinuetFloat")]
+pub enum JournalEntry<T: MinuetFloat, const DIM: usize> {
     /// Store operation.
     Store {
         /// Sequence number.
@@ -118,9 +119,7 @@ impl Journal {
     pub fn append_clear<T: MinuetFloat + Serialize, const DIM: usize>(&mut self) -> Result<()> {
         self.sequence += 1;
 
-        let entry: JournalEntry<T, DIM> = JournalEntry::Clear {
-            seq: self.sequence,
-        };
+        let entry: JournalEntry<T, DIM> = JournalEntry::Clear { seq: self.sequence };
 
         self.append_entry(&entry)
     }

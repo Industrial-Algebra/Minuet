@@ -2,7 +2,7 @@
 //!
 //! Provides strategies for combining multiple holographic traces.
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -113,10 +113,8 @@ where
     };
 
     // Get raw traces
-    let raw_traces: Vec<TropicalDualClifford<T, DIM>> = traces
-        .par_iter()
-        .map(|t| t.raw_trace())
-        .collect();
+    let raw_traces: Vec<TropicalDualClifford<T, DIM>> =
+        traces.par_iter().map(|t| t.raw_trace()).collect();
 
     // Weighted sum with bundling
     let merged = raw_traces
@@ -152,10 +150,8 @@ where
         return MemoryTrace::new().into_unknown();
     }
 
-    let raw_traces: Vec<TropicalDualClifford<T, DIM>> = traces
-        .par_iter()
-        .map(|t| t.raw_trace())
-        .collect();
+    let raw_traces: Vec<TropicalDualClifford<T, DIM>> =
+        traces.par_iter().map(|t| t.raw_trace()).collect();
 
     let _merged = raw_traces
         .par_iter()
@@ -193,7 +189,7 @@ impl<T: MinuetFloat> Default for IncrementalMergeConfig<T> {
 }
 
 /// Incremental merger for streaming updates.
-pub struct IncrementalMerger<T, const DIM: usize> {
+pub struct IncrementalMerger<T: MinuetFloat, const DIM: usize> {
     /// Accumulated trace.
     accumulated: TropicalDualClifford<T, DIM>,
 
@@ -288,11 +284,20 @@ mod tests {
         trace2.store(&k2, &v2).unwrap();
 
         // Test different strategies
-        let _merged_equal = merge_traces_parallel(&[trace1.clone(), trace2.clone()], MergeStrategy::EqualWeight, 1.0);
+        let _merged_equal = merge_traces_parallel(
+            &[trace1.clone(), trace2.clone()],
+            MergeStrategy::EqualWeight,
+            1.0,
+        );
 
-        let _merged_count = merge_traces_parallel(&[trace1.clone(), trace2.clone()], MergeStrategy::WeightedByCount, 1.0);
+        let _merged_count = merge_traces_parallel(
+            &[trace1.clone(), trace2.clone()],
+            MergeStrategy::WeightedByCount,
+            1.0,
+        );
 
-        let _merged_snr = merge_traces_parallel(&[trace1, trace2], MergeStrategy::WeightedBySNR, 1.0);
+        let _merged_snr =
+            merge_traces_parallel(&[trace1, trace2], MergeStrategy::WeightedBySNR, 1.0);
     }
 
     #[test]

@@ -2,12 +2,15 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use minuet::parallel::batch::{bind_batch_parallel, bundle_parallel};
 
 fn generate_random_pairs<const DIM: usize>(
     n: usize,
-) -> Vec<(TropicalDualClifford<f64, DIM>, TropicalDualClifford<f64, DIM>)> {
+) -> Vec<(
+    TropicalDualClifford<f64, DIM>,
+    TropicalDualClifford<f64, DIM>,
+)> {
     (0..n)
         .map(|_| {
             (
@@ -39,17 +42,13 @@ fn binding_throughput(c: &mut Criterion) {
         );
 
         // Parallel binding - 64 dimensions
-        group.bench_with_input(
-            BenchmarkId::new("parallel/64", size),
-            &size,
-            |b, &size| {
-                let pairs = generate_random_pairs::<64>(size);
-                let (keys, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
-                b.iter(|| {
-                    black_box(bind_batch_parallel(&keys, &values));
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("parallel/64", size), &size, |b, &size| {
+            let pairs = generate_random_pairs::<64>(size);
+            let (keys, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+            b.iter(|| {
+                black_box(bind_batch_parallel(&keys, &values));
+            });
+        });
 
         // Sequential binding - 256 dimensions
         group.bench_with_input(
@@ -66,17 +65,13 @@ fn binding_throughput(c: &mut Criterion) {
         );
 
         // Parallel binding - 256 dimensions
-        group.bench_with_input(
-            BenchmarkId::new("parallel/256", size),
-            &size,
-            |b, &size| {
-                let pairs = generate_random_pairs::<256>(size);
-                let (keys, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
-                b.iter(|| {
-                    black_box(bind_batch_parallel(&keys, &values));
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("parallel/256", size), &size, |b, &size| {
+            let pairs = generate_random_pairs::<256>(size);
+            let (keys, values): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
+            b.iter(|| {
+                black_box(bind_batch_parallel(&keys, &values));
+            });
+        });
     }
 
     group.finish();
@@ -93,9 +88,8 @@ fn bundling_throughput(c: &mut Criterion) {
             BenchmarkId::new("sequential/64", size),
             &size,
             |b, &size| {
-                let items: Vec<TropicalDualClifford<f64, 64>> = (0..size)
-                    .map(|_| TropicalDualClifford::random())
-                    .collect();
+                let items: Vec<TropicalDualClifford<f64, 64>> =
+                    (0..size).map(|_| TropicalDualClifford::random()).collect();
                 b.iter(|| {
                     let mut result = TropicalDualClifford::bundling_zero();
                     for item in &items {
@@ -107,18 +101,13 @@ fn bundling_throughput(c: &mut Criterion) {
         );
 
         // Parallel bundling
-        group.bench_with_input(
-            BenchmarkId::new("parallel/64", size),
-            &size,
-            |b, &size| {
-                let items: Vec<TropicalDualClifford<f64, 64>> = (0..size)
-                    .map(|_| TropicalDualClifford::random())
-                    .collect();
-                b.iter(|| {
-                    black_box(bundle_parallel(&items, 1.0));
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("parallel/64", size), &size, |b, &size| {
+            let items: Vec<TropicalDualClifford<f64, 64>> =
+                (0..size).map(|_| TropicalDualClifford::random()).collect();
+            b.iter(|| {
+                black_box(bundle_parallel(&items, 1.0));
+            });
+        });
     }
 
     group.finish();
@@ -155,5 +144,10 @@ fn dimension_scaling(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, binding_throughput, bundling_throughput, dimension_scaling);
+criterion_group!(
+    benches,
+    binding_throughput,
+    bundling_throughput,
+    dimension_scaling
+);
 criterion_main!(benches);

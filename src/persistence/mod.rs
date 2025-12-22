@@ -36,7 +36,7 @@ mod journal;
 mod recovery;
 mod snapshot;
 
-pub use journal::{Journal, JournalEntry, JournalConfig};
+pub use journal::{Journal, JournalConfig, JournalEntry};
 pub use recovery::{Recovery, RecoveryResult};
 pub use snapshot::{Snapshot, SnapshotMetadata};
 
@@ -47,13 +47,15 @@ use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{MinuetError, Result};
-use crate::memory::{MemoryStore, MemoryTrace, StoreReceipt, CapacityInfo, Query, QueryResult, MergeResult};
+use crate::memory::{
+    CapacityInfo, MemoryStore, MemoryTrace, MergeResult, Query, QueryResult, StoreReceipt,
+};
 use crate::precision::MinuetFloat;
 
-use amari_fusion::holographic::{RetrievalResult, TropicalDualClifford};
+use amari_fusion::{holographic::RetrievalResult, TropicalDualClifford};
 
 /// A persistent holographic memory with journaling.
-pub struct PersistentMemory<T, const DIM: usize> {
+pub struct PersistentMemory<T: MinuetFloat, const DIM: usize> {
     /// In-memory trace.
     memory: MemoryTrace<T, DIM>,
 
@@ -145,7 +147,9 @@ impl<T: MinuetFloat + Serialize + for<'de> Deserialize<'de>, const DIM: usize>
 
     /// Check if a snapshot is due.
     fn maybe_snapshot(&self) -> Result<()> {
-        let ops = self.operations_since_snapshot.fetch_add(1, Ordering::SeqCst);
+        let ops = self
+            .operations_since_snapshot
+            .fetch_add(1, Ordering::SeqCst);
 
         if ops >= self.snapshot_interval {
             self.snapshot()?;
@@ -155,8 +159,8 @@ impl<T: MinuetFloat + Serialize + for<'de> Deserialize<'de>, const DIM: usize>
     }
 }
 
-impl<T: MinuetFloat + Serialize + for<'de> Deserialize<'de>, const DIM: usize>
-    MemoryStore<T, DIM> for PersistentMemory<T, DIM>
+impl<T: MinuetFloat + Serialize + for<'de> Deserialize<'de>, const DIM: usize> MemoryStore<T, DIM>
+    for PersistentMemory<T, DIM>
 where
     T: Send + Sync,
     TropicalDualClifford<T, DIM>: Send + Sync,
@@ -188,10 +192,7 @@ where
         pairs.iter().map(|(k, v)| self.store(k, v)).collect()
     }
 
-    fn retrieve(
-        &self,
-        key: &TropicalDualClifford<T, DIM>,
-    ) -> Result<RetrievalResult<T, DIM>> {
+    fn retrieve(&self, key: &TropicalDualClifford<T, DIM>) -> Result<RetrievalResult<T, DIM>> {
         let value = self.memory.retrieve(key);
         let info = self.memory.capacity_info();
 

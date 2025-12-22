@@ -3,10 +3,9 @@
 //! Queries are structured operations over holographic memory, including
 //! direct lookups, analogies, transformations, and composite patterns.
 
-use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "contracts")]
@@ -51,7 +50,7 @@ impl BitMask {
 
 /// Query pattern types.
 #[derive(Debug, Clone)]
-pub enum QueryPattern<T, const DIM: usize> {
+pub enum QueryPattern<T: MinuetFloat, const DIM: usize> {
     /// Direct key lookup.
     Key(TropicalDualClifford<T, DIM>),
 
@@ -111,7 +110,7 @@ impl Default for CleanupStrategy {
 
 /// A structured query against holographic memory.
 #[derive(Debug, Clone)]
-pub struct Query<T, const DIM: usize> {
+pub struct Query<T: MinuetFloat, const DIM: usize> {
     /// The query pattern.
     pub(crate) pattern: QueryPattern<T, DIM>,
     /// Temperature for retrieval.
@@ -242,7 +241,10 @@ impl<T: MinuetFloat, const DIM: usize> Query<T, DIM> {
         // Apply cleanup if specified
         let cleaned_result = match &self.cleanup {
             CleanupStrategy::None => raw_result,
-            CleanupStrategy::Resonator { max_iterations, threshold } => {
+            CleanupStrategy::Resonator {
+                max_iterations,
+                threshold,
+            } => {
                 // Resonator cleanup would go here
                 // For now, return raw
                 raw_result
@@ -334,14 +336,14 @@ impl<T: MinuetFloat, const DIM: usize> Query<T, DIM> {
 
 /// Result of a query operation.
 #[derive(Clone, Debug)]
-pub struct QueryResult<T, const DIM: usize> {
+pub struct QueryResult<T: MinuetFloat, const DIM: usize> {
     /// Retrieved values, ranked by relevance.
     pub results: Vec<RankedResult<T, DIM>>,
     /// Query execution statistics.
     pub stats: QueryStats,
 }
 
-impl<T, const DIM: usize> QueryResult<T, DIM> {
+impl<T: MinuetFloat, const DIM: usize> QueryResult<T, DIM> {
     /// Get the top result if any.
     #[must_use]
     pub fn top(&self) -> Option<&RankedResult<T, DIM>> {
@@ -363,7 +365,7 @@ impl<T, const DIM: usize> QueryResult<T, DIM> {
 
 /// A single ranked result from a query.
 #[derive(Clone, Debug)]
-pub struct RankedResult<T, const DIM: usize> {
+pub struct RankedResult<T: MinuetFloat, const DIM: usize> {
     /// The retrieved value.
     pub value: TropicalDualClifford<T, DIM>,
     /// Similarity score.
@@ -390,9 +392,7 @@ mod tests {
     #[test]
     fn key_query_construction() {
         let key: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-        let query = Query::key(key.clone())
-            .limit(5)
-            .threshold(0.8);
+        let query = Query::key(key.clone()).limit(5).threshold(0.8);
 
         assert!(matches!(query.pattern, QueryPattern::Key(_)));
         assert_eq!(query.limit, Some(5));
@@ -405,11 +405,12 @@ mod tests {
         let source_ctx: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
         let target_ctx: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
 
-        let query = Query::analogy(source, source_ctx, target_ctx)
-            .with_cleanup(CleanupStrategy::Resonator {
+        let query = Query::analogy(source, source_ctx, target_ctx).with_cleanup(
+            CleanupStrategy::Resonator {
                 max_iterations: 10,
                 threshold: 0.95,
-            });
+            },
+        );
 
         assert!(matches!(query.pattern, QueryPattern::Analogy { .. }));
     }

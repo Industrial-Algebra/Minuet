@@ -8,7 +8,6 @@ use crate::error::Result;
 use crate::memory::MemoryTrace;
 use crate::precision::MinuetFloat;
 
-use super::journal::Journal;
 use super::snapshot::Snapshot;
 
 /// Result of a recovery operation.
@@ -57,7 +56,9 @@ impl Recovery {
                     snapshot.into_trace()?
                 }
                 Err(e) => {
-                    result.warnings.push(format!("Failed to load snapshot: {}", e));
+                    result
+                        .warnings
+                        .push(format!("Failed to load snapshot: {}", e));
                     MemoryTrace::new().into_unknown()
                 }
             }
@@ -69,7 +70,9 @@ impl Recovery {
         if journal_path.exists() {
             // In full implementation, would replay journal entries
             // For now, just note that recovery would happen
-            result.warnings.push("Journal replay not yet implemented".into());
+            result
+                .warnings
+                .push("Journal replay not yet implemented".into());
         }
 
         result.final_item_count = trace.item_count();
@@ -78,10 +81,7 @@ impl Recovery {
     }
 
     /// Check if recovery is needed.
-    pub fn needs_recovery(
-        snapshot_path: impl AsRef<Path>,
-        journal_path: impl AsRef<Path>,
-    ) -> bool {
+    pub fn needs_recovery(snapshot_path: impl AsRef<Path>, journal_path: impl AsRef<Path>) -> bool {
         let journal_path = journal_path.as_ref();
 
         // Recovery is needed if journal exists and has entries

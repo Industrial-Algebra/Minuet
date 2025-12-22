@@ -4,16 +4,14 @@
 //! with implementations for single-trace and sharded memories.
 
 use std::marker::PhantomData;
-use std::sync::atomic::{AtomicU64, Ordering};
 
-use amari_fusion::holographic::{Bindable, RetrievalResult, TropicalDualClifford};
-use parking_lot::RwLock;
+use amari_fusion::{holographic::RetrievalResult, TropicalDualClifford};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "contracts")]
 use creusot_contracts::*;
 
-use crate::error::{CapacityWarning, MinuetError, Result};
+use crate::error::{CapacityWarning, Result};
 use crate::precision::MinuetFloat;
 
 use super::capacity::CapacityInfo;
@@ -85,10 +83,7 @@ pub trait MemoryStore<T: MinuetFloat, const DIM: usize>: Send + Sync {
     ) -> Result<Vec<StoreReceipt>>;
 
     /// Retrieve by key with default settings.
-    fn retrieve(
-        &self,
-        key: &TropicalDualClifford<T, DIM>,
-    ) -> Result<RetrievalResult<T, DIM>>;
+    fn retrieve(&self, key: &TropicalDualClifford<T, DIM>) -> Result<RetrievalResult<T, DIM>>;
 
     /// Execute a structured query.
     fn query(&self, query: Query<T, DIM>) -> Result<QueryResult<T, DIM>>;
@@ -122,7 +117,7 @@ pub trait MemoryStore<T: MinuetFloat, const DIM: usize>: Send + Sync {
 ///
 /// Wraps a `MemoryTrace` with the full store interface.
 #[derive(Debug)]
-pub struct BasicMemoryStore<T, const DIM: usize, S = store_state::Ready> {
+pub struct BasicMemoryStore<T: MinuetFloat, const DIM: usize, S = store_state::Ready> {
     trace: MemoryTrace<T, DIM>,
     _state: PhantomData<S>,
 }
@@ -171,16 +166,10 @@ where
     ) -> Result<Vec<StoreReceipt>> {
         // For basic store, just iterate
         // Parallel implementation in parallel::batch
-        pairs
-            .iter()
-            .map(|(k, v)| self.trace.store(k, v))
-            .collect()
+        pairs.iter().map(|(k, v)| self.trace.store(k, v)).collect()
     }
 
-    fn retrieve(
-        &self,
-        key: &TropicalDualClifford<T, DIM>,
-    ) -> Result<RetrievalResult<T, DIM>> {
+    fn retrieve(&self, key: &TropicalDualClifford<T, DIM>) -> Result<RetrievalResult<T, DIM>> {
         let value = self.trace.retrieve(key);
         let info = self.trace.capacity_info();
 
@@ -216,20 +205,23 @@ where
         Ok(MergeResult {
             items_merged: other_count,
             final_snr: final_info.estimated_snr,
-            capacity_warning: final_info.remaining_stores.map(|r| {
-                if r == 0 {
-                    CapacityWarning::Critical {
-                        snr: final_info.estimated_snr,
+            capacity_warning: final_info
+                .remaining_stores
+                .map(|r| {
+                    if r == 0 {
+                        CapacityWarning::Critical {
+                            snr: final_info.estimated_snr,
+                        }
+                    } else if final_info.utilization > 0.7 {
+                        CapacityWarning::Approaching {
+                            utilization: final_info.utilization,
+                            remaining_stores: r,
+                        }
+                    } else {
+                        return;
                     }
-                } else if final_info.utilization > 0.7 {
-                    CapacityWarning::Approaching {
-                        utilization: final_info.utilization,
-                        remaining_stores: r,
-                    }
-                } else {
-                    return;
-                }
-            }).flatten(),
+                })
+                .flatten(),
         })
     }
 
@@ -261,7 +253,7 @@ where
 
 /// Builder for configuring memory stores.
 #[derive(Debug, Clone)]
-pub struct MemoryStoreBuilder<T, const DIM: usize> {
+pub struct MemoryStoreBuilder<T: MinuetFloat, const DIM: usize> {
     beta: T,
     snr_threshold: T,
     warning_threshold: f64,

@@ -5,7 +5,7 @@
 
 use std::marker::PhantomData;
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "contracts")]
@@ -15,7 +15,7 @@ use crate::binding::Codebook;
 use crate::error::{MinuetError, Result};
 use crate::precision::MinuetFloat;
 
-use super::temperature::{Temperature, TemperatureSchedule};
+use super::temperature::Temperature;
 
 /// Configuration for resonator cleanup.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +80,7 @@ impl ResonatorConfig {
 
 /// Result of resonator cleanup.
 #[derive(Debug, Clone)]
-pub struct ResonatorResult<T, const DIM: usize> {
+pub struct ResonatorResult<T: MinuetFloat, const DIM: usize> {
     /// The cleaned-up value.
     pub value: TropicalDualClifford<T, DIM>,
 
@@ -104,7 +104,7 @@ pub struct ResonatorResult<T, const DIM: usize> {
 ///
 /// Resonators iteratively project noisy inputs onto a codebook manifold,
 /// using the binding algebra to clean up retrieval noise.
-pub struct Resonator<T, const DIM: usize> {
+pub struct Resonator<T: MinuetFloat, const DIM: usize> {
     /// Reference codebook for cleanup targets.
     codebook_symbols: Vec<TropicalDualClifford<T, DIM>>,
 
@@ -136,7 +136,10 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
 
     /// Create from raw symbol vectors.
     #[must_use]
-    pub fn from_symbols(symbols: Vec<TropicalDualClifford<T, DIM>>, config: ResonatorConfig) -> Self {
+    pub fn from_symbols(
+        symbols: Vec<TropicalDualClifford<T, DIM>>,
+        config: ResonatorConfig,
+    ) -> Self {
         Self {
             codebook_symbols: symbols,
             config,
@@ -233,7 +236,10 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
     /// Compute weighted average of codebook symbols.
     fn weighted_average(&self, similarities: &[f64], beta: f64) -> TropicalDualClifford<T, DIM> {
         // Apply softmax with temperature
-        let max_sim = similarities.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_sim = similarities
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let exp_sims: Vec<f64> = similarities
             .iter()
             .map(|s| ((s - max_sim) * beta).exp())
@@ -295,7 +301,7 @@ impl<T: MinuetFloat, const DIM: usize> Resonator<T, DIM> {
 /// Multi-stage resonator for hierarchical cleanup.
 ///
 /// Applies multiple resonators in sequence, from coarse to fine codebooks.
-pub struct HierarchicalResonator<T, const DIM: usize> {
+pub struct HierarchicalResonator<T: MinuetFloat, const DIM: usize> {
     stages: Vec<Resonator<T, DIM>>,
 }
 

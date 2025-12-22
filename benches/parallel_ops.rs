@@ -2,12 +2,12 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
-use amari_fusion::holographic::TropicalDualClifford;
+use amari_fusion::TropicalDualClifford;
+use minuet::memory::MemoryStore;
 use minuet::parallel::batch::{
     bind_batch_parallel, normalize_batch_parallel, similarities_parallel, top_k_parallel,
 };
 use minuet::parallel::ShardedMemory;
-use minuet::memory::MemoryStore;
 
 fn parallel_similarity(c: &mut Criterion) {
     let mut group = c.benchmark_group("parallel_similarity");
@@ -15,35 +15,25 @@ fn parallel_similarity(c: &mut Criterion) {
     for size in [100, 1000, 10000] {
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(
-            BenchmarkId::new("full_scan/64", size),
-            &size,
-            |b, &size| {
-                let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                let candidates: Vec<TropicalDualClifford<f64, 64>> = (0..size)
-                    .map(|_| TropicalDualClifford::random())
-                    .collect();
+        group.bench_with_input(BenchmarkId::new("full_scan/64", size), &size, |b, &size| {
+            let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+            let candidates: Vec<TropicalDualClifford<f64, 64>> =
+                (0..size).map(|_| TropicalDualClifford::random()).collect();
 
-                b.iter(|| {
-                    black_box(similarities_parallel(&query, &candidates));
-                });
-            },
-        );
+            b.iter(|| {
+                black_box(similarities_parallel(&query, &candidates));
+            });
+        });
 
-        group.bench_with_input(
-            BenchmarkId::new("top_10/64", size),
-            &size,
-            |b, &size| {
-                let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
-                let candidates: Vec<TropicalDualClifford<f64, 64>> = (0..size)
-                    .map(|_| TropicalDualClifford::random())
-                    .collect();
+        group.bench_with_input(BenchmarkId::new("top_10/64", size), &size, |b, &size| {
+            let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
+            let candidates: Vec<TropicalDualClifford<f64, 64>> =
+                (0..size).map(|_| TropicalDualClifford::random()).collect();
 
-                b.iter(|| {
-                    black_box(top_k_parallel(&query, &candidates, 10));
-                });
-            },
-        );
+            b.iter(|| {
+                black_box(top_k_parallel(&query, &candidates, 10));
+            });
+        });
     }
 
     group.finish();
@@ -55,19 +45,14 @@ fn parallel_normalization(c: &mut Criterion) {
     for size in [100, 1000, 10000] {
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(
-            BenchmarkId::new("batch/64", size),
-            &size,
-            |b, &size| {
-                let items: Vec<TropicalDualClifford<f64, 64>> = (0..size)
-                    .map(|_| TropicalDualClifford::random())
-                    .collect();
+        group.bench_with_input(BenchmarkId::new("batch/64", size), &size, |b, &size| {
+            let items: Vec<TropicalDualClifford<f64, 64>> =
+                (0..size).map(|_| TropicalDualClifford::random()).collect();
 
-                b.iter(|| {
-                    black_box(normalize_batch_parallel(&items));
-                });
-            },
-        );
+            b.iter(|| {
+                black_box(normalize_batch_parallel(&items));
+            });
+        });
     }
 
     group.finish();
@@ -114,5 +99,10 @@ fn sharded_memory(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, parallel_similarity, parallel_normalization, sharded_memory);
+criterion_group!(
+    benches,
+    parallel_similarity,
+    parallel_normalization,
+    sharded_memory
+);
 criterion_main!(benches);

@@ -12,5 +12,5 @@ mod codebook;
 mod transform;
 
 pub use algebra::{BindingAlgebra, GradeProjection};
-pub use codebook::{Codebook, SymbolGenerator, SymbolProperties, StandardGenerator};
+pub use codebook::{Codebook, StandardGenerator, SymbolGenerator, SymbolProperties};
 pub use transform::{Transform, TransformMetadata};

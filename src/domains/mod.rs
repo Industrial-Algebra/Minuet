@@ -13,7 +13,7 @@ pub mod geometric;
 pub mod molecular;
 pub mod symbolic;
 
-use amari_fusion::holographic::TropicalDualClifford;
+use amari_fusion::TropicalDualClifford;
 
 use crate::precision::MinuetFloat;
 

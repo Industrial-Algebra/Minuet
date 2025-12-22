@@ -2,7 +2,7 @@
 //!
 //! Uses Rayon for data-parallel operations on TDC elements.
 
-use amari_fusion::holographic::{Bindable, TropicalDualClifford};
+use amari_fusion::{holographic::Bindable, TropicalDualClifford};
 use rayon::prelude::*;
 
 #[cfg(feature = "contracts")]
@@ -25,7 +25,11 @@ pub fn bind_batch_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
 where
     TropicalDualClifford<T, DIM>: Send + Sync,
 {
-    assert_eq!(keys.len(), values.len(), "keys and values must have same length");
+    assert_eq!(
+        keys.len(),
+        values.len(),
+        "keys and values must have same length"
+    );
 
     keys.par_iter()
         .zip(values.par_iter())
@@ -57,13 +61,10 @@ where
         return TropicalDualClifford::bundling_zero();
     }
 
-    items
-        .par_iter()
-        .cloned()
-        .reduce(
-            || TropicalDualClifford::bundling_zero(),
-            |a, b| a.bundle(&b, beta),
-        )
+    items.par_iter().cloned().reduce(
+        || TropicalDualClifford::bundling_zero(),
+        |a, b| a.bundle(&b, beta),
+    )
 }
 
 /// Parallel similarity computation.
@@ -94,7 +95,11 @@ pub fn unbind_batch_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
 where
     TropicalDualClifford<T, DIM>: Send + Sync,
 {
-    assert_eq!(keys.len(), traces.len(), "keys and traces must have same length");
+    assert_eq!(
+        keys.len(),
+        traces.len(),
+        "keys and traces must have same length"
+    );
 
     keys.par_iter()
         .zip(traces.par_iter())
@@ -177,7 +182,11 @@ pub fn weighted_sum_parallel<T: MinuetFloat + Send + Sync, const DIM: usize>(
 where
     TropicalDualClifford<T, DIM>: Send + Sync + Clone,
 {
-    assert_eq!(items.len(), weights.len(), "items and weights must have same length");
+    assert_eq!(
+        items.len(),
+        weights.len(),
+        "items and weights must have same length"
+    );
 
     if items.is_empty() {
         return TropicalDualClifford::bundling_zero();
@@ -187,10 +196,7 @@ where
         .par_iter()
         .zip(weights.par_iter())
         .map(|(item, &weight)| item.scale(weight))
-        .reduce(
-            || TropicalDualClifford::bundling_zero(),
-            |a, b| a.add(&b),
-        )
+        .reduce(|| TropicalDualClifford::bundling_zero(), |a, b| a.add(&b))
 }
 
 /// Batch configuration for adaptive parallelism.
@@ -246,13 +252,11 @@ mod tests {
 
     #[test]
     fn parallel_binding() {
-        let keys: Vec<TropicalDualClifford<f64, 64>> = (0..100)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let keys: Vec<TropicalDualClifford<f64, 64>> =
+            (0..100).map(|_| TropicalDualClifford::random()).collect();
 
-        let values: Vec<TropicalDualClifford<f64, 64>> = (0..100)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let values: Vec<TropicalDualClifford<f64, 64>> =
+            (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         let results = bind_batch_parallel(&keys, &values);
         assert_eq!(results.len(), 100);
@@ -266,9 +270,8 @@ mod tests {
 
     #[test]
     fn parallel_bundling() {
-        let items: Vec<TropicalDualClifford<f64, 64>> = (0..50)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let items: Vec<TropicalDualClifford<f64, 64>> =
+            (0..50).map(|_| TropicalDualClifford::random()).collect();
 
         let parallel_result = bundle_parallel(&items, 1.0);
 
@@ -287,9 +290,8 @@ mod tests {
     fn parallel_similarities() {
         let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
 
-        let candidates: Vec<TropicalDualClifford<f64, 64>> = (0..100)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let candidates: Vec<TropicalDualClifford<f64, 64>> =
+            (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         let sims = similarities_parallel(&query, &candidates);
         assert_eq!(sims.len(), 100);
@@ -304,9 +306,8 @@ mod tests {
     fn top_k_finds_best() {
         let query: TropicalDualClifford<f64, 64> = TropicalDualClifford::random();
 
-        let mut candidates: Vec<TropicalDualClifford<f64, 64>> = (0..100)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let mut candidates: Vec<TropicalDualClifford<f64, 64>> =
+            (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         // Put query at position 50
         candidates[50] = query.clone();
@@ -327,23 +328,19 @@ mod tests {
         };
 
         // Small batch - should use sequential
-        let small_keys: Vec<TropicalDualClifford<f64, 64>> = (0..10)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
-        let small_values: Vec<TropicalDualClifford<f64, 64>> = (0..10)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let small_keys: Vec<TropicalDualClifford<f64, 64>> =
+            (0..10).map(|_| TropicalDualClifford::random()).collect();
+        let small_values: Vec<TropicalDualClifford<f64, 64>> =
+            (0..10).map(|_| TropicalDualClifford::random()).collect();
 
         let small_results = bind_batch_adaptive(&small_keys, &small_values, &config);
         assert_eq!(small_results.len(), 10);
 
         // Large batch - should use parallel
-        let large_keys: Vec<TropicalDualClifford<f64, 64>> = (0..100)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
-        let large_values: Vec<TropicalDualClifford<f64, 64>> = (0..100)
-            .map(|_| TropicalDualClifford::random())
-            .collect();
+        let large_keys: Vec<TropicalDualClifford<f64, 64>> =
+            (0..100).map(|_| TropicalDualClifford::random()).collect();
+        let large_values: Vec<TropicalDualClifford<f64, 64>> =
+            (0..100).map(|_| TropicalDualClifford::random()).collect();
 
         let large_results = bind_batch_adaptive(&large_keys, &large_values, &config);
         assert_eq!(large_results.len(), 100);
