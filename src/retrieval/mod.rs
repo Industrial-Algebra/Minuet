@@ -1,15 +1,13 @@
-//! Retrieval operations for holographic memory.
+//! Retrieval strategies.
 //!
-//! This module provides:
+//! This module provides strategies for cleaning up and interpreting
+//! raw retrieval results from holographic memory.
 //!
-//! - **Resonator**: Cleanup networks for denoising retrieval results
-//! - **Attribution**: Provenance tracking via dual gradients
-//! - **Temperature**: Soft/hard retrieval interpolation
+//! - [`DirectRetriever`](crate::retrieval::DirectRetriever): Returns raw results without cleanup
+//! - [`ResonatorRetriever`](crate::retrieval::ResonatorRetriever): Uses resonator network for cleanup
 
-mod attribution;
-mod resonator;
-mod temperature;
+mod direct;
+mod resonator_retriever;
 
-pub use attribution::{Attribution, AttributionResult};
-pub use resonator::{Resonator, ResonatorConfig, ResonatorResult};
-pub use temperature::Temperature;
+pub use direct::DirectRetriever;
+pub use resonator_retriever::ResonatorRetriever;
