@@ -9,7 +9,8 @@ keywords = ["holographic", "memory", "algebra", "clifford", "database"]
 categories = ["database", "science", "mathematics"]
 
 [dependencies]
-# Core algebra
+# Core algebra backends
+amari-holographic = { version = "0.12.3", features = ["serialize", "parallel"] }
 amari-fusion = { version = "0.12.2", features = ["holographic", "serialize"] }
 
 # Parallelism
@@ -32,6 +33,9 @@ creusot-contracts = { version = "0.3", optional = true }
 
 # High-precision numerics
 num-traits = "0.2"
+
+# Fast random number generation (also used by amari-fusion)
+fastrand = "2.0"
 num-bigfloat = { version = "1.7", optional = true }
 
 # GPU support (optional)
@@ -57,7 +61,14 @@ rand = "0.8"
 rand_chacha = "0.3"
 
 [features]
-default = []
+default = ["holographic"]
+
+# Algebra backend selection
+# Use amari-holographic ProductCliffordAlgebra (recommended)
+holographic = []
+# Use amari-fusion TropicalDualClifford (legacy)
+legacy-fusion = []
+
 contracts = ["creusot-contracts"]
 high-precision = ["num-bigfloat"]
 gpu = ["wgpu", "bytemuck"]

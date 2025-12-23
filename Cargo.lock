@@ -70,6 +70,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "amari-holographic"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "482ed4393181dfb8e61e8ad22a2649a45344dedbbc9e8a4b7c6990a86e91da63"
+dependencies = [
+ "amari-core",
+ "fastrand",
+ "num-traits",
+ "rayon",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "amari-tropical"
 version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1326,12 +1340,14 @@ name = "minuet"
 version = "0.1.0"
 dependencies = [
  "amari-fusion",
+ "amari-holographic",
  "approx",
  "bincode",
  "bytemuck",
  "creusot-contracts",
  "criterion",
  "crossbeam",
+ "fastrand",
  "num-bigfloat",
  "num-traits",
  "parking_lot",

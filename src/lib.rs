@@ -60,13 +60,20 @@
 #[cfg(feature = "contracts")]
 use creusot_contracts::*;
 
-// Re-export core types from amari-fusion
+// Re-export core types from amari-fusion (legacy compatibility)
 pub use amari_fusion::{
     holographic::{Bindable, RetrievalResult},
     TropicalDualClifford,
 };
 
+// Re-export core types from amari-holographic (recommended)
+pub use amari_holographic::{
+    BindingAlgebra, HolographicMemory as HoloMemory, ProductCliffordAlgebra,
+    Resonator as HoloResonator,
+};
+
 // Core modules
+pub mod algebra;
 pub mod binding;
 pub mod error;
 pub mod memory;
@@ -83,6 +90,9 @@ pub mod gpu;
 pub mod domains;
 
 // Public re-exports for convenience
+pub use algebra::{Algebra, Algebra256, DefaultAlgebra, SmallAlgebra};
+#[cfg(feature = "holographic")]
+pub use algebra::{Algebra1024, Algebra512};
 pub use binding::{Codebook, SymbolGenerator, Transform};
 pub use error::{CapacityWarning, MinuetError, Result};
 pub use memory::{CapacityInfo, MemoryStore, MemoryTrace, Query, QueryResult, StoreReceipt};
@@ -221,14 +231,16 @@ pub mod dimensions {
 
 /// Prelude module for convenient imports.
 pub mod prelude {
+    pub use crate::algebra::{Algebra, DefaultAlgebra};
     pub use crate::binding::{Codebook, Transform};
     pub use crate::error::{MinuetError, Result};
     pub use crate::memory::{MemoryStore, MemoryTrace, Query};
     pub use crate::precision::MinuetFloat;
     pub use crate::retrieval::{Resonator, Temperature};
 
-    // Re-export key amari-fusion types
+    // Re-export key algebra types
     pub use amari_fusion::{holographic::Bindable, TropicalDualClifford};
+    pub use amari_holographic::{BindingAlgebra, ProductCliffordAlgebra};
 }
 
 #[cfg(test)]

@@ -26,12 +26,17 @@ pub enum MinuetError {
     },
 
     /// Cannot compute inverse due to near-singular element.
-    #[error("Cannot compute inverse: magnitude {magnitude:.6} below epsilon {epsilon:.6}")]
+    #[error("Cannot compute inverse: {message}")]
     SingularInverse {
-        /// The computed magnitude
-        magnitude: f64,
-        /// The epsilon threshold for invertibility
-        epsilon: f64,
+        /// Description of why the inverse failed
+        message: String,
+    },
+
+    /// Normalization failed due to zero or near-zero norm.
+    #[error("Normalization failed: {message}")]
+    NormalizationFailed {
+        /// Description of the normalization failure
+        message: String,
     },
 
     /// Dimension mismatch in algebraic operation.

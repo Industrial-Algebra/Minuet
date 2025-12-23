@@ -87,7 +87,9 @@ impl Default for StandardGenerator {
 impl<T: MinuetFloat, const DIM: usize> SymbolGenerator<T, DIM> for StandardGenerator {
     fn generate(&self) -> TropicalDualClifford<T, DIM> {
         let _seed = self.counter.fetch_add(1, Ordering::SeqCst);
-        TropicalDualClifford::random()
+        // Use random_versor which uses actual randomness (fastrand)
+        // random() is deterministic and broken
+        TropicalDualClifford::random_versor(2)
     }
 
     fn generate_with_properties(
@@ -95,10 +97,10 @@ impl<T: MinuetFloat, const DIM: usize> SymbolGenerator<T, DIM> for StandardGener
         props: &SymbolProperties,
         existing: &HashMap<String, TropicalDualClifford<T, DIM>>,
     ) -> TropicalDualClifford<T, DIM> {
-        // Start with random generation
+        // Start with random versor generation
         let mut candidate = self.generate();
 
-        // Normalize to unit norm
+        // Normalize to unit norm (random_versor already normalized, but be safe)
         candidate = candidate.normalize();
 
         // Apply similarity constraints by interpolation
@@ -409,11 +411,22 @@ mod tests {
 
         // Same name should return same symbol
         let a2 = codebook.symbol("a");
-        assert!(a.similarity(&a2) > 0.99);
+        let self_sim = a.similarity(&a2);
+        assert!(
+            self_sim > 0.99,
+            "self-similarity should be ~1, got {}",
+            self_sim
+        );
 
         // Different names should be dissimilar
+        // In 256 dimensions, random versors should have similarity ~0
+        // Use a relaxed threshold to account for variance
         let sim = a.similarity(&b);
-        assert!(sim < 0.5);
+        assert!(
+            sim.abs() < 0.5,
+            "different symbols should be dissimilar, got {}",
+            sim
+        );
     }
 
     #[test]

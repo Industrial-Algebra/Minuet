@@ -175,8 +175,7 @@ impl<T: MinuetFloat, const DIM: usize> Transform<T, DIM, MaybeInvertible> {
 
         if mag < epsilon {
             return Err(MinuetError::SingularInverse {
-                magnitude: mag,
-                epsilon,
+                message: format!("magnitude {mag:.6} below epsilon {epsilon:.6}"),
             });
         }
 
@@ -387,8 +386,9 @@ mod tests {
 
     #[test]
     fn extract_and_apply() {
-        let before: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let after: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        // Use random_versor which actually generates random elements
+        let before: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let after: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
 
         let transform = Transform::extract(&before, &after).unwrap();
 
@@ -402,7 +402,8 @@ mod tests {
 
     #[test]
     fn identity_transform() {
-        let elem: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        // Use random_versor which actually generates random elements
+        let elem: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
 
         // Extract identity: before == after
         let transform = Transform::extract(&elem, &elem).unwrap();
@@ -412,9 +413,10 @@ mod tests {
 
     #[test]
     fn transform_composition() {
-        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        // Use random_versor which actually generates random elements
+        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
 
         let t1 = Transform::extract(&a, &b).unwrap();
         let t2 = Transform::extract(&b, &c).unwrap();
@@ -431,8 +433,9 @@ mod tests {
 
     #[test]
     fn invertible_transform() {
-        let before: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let after: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        // Use random_versor which actually generates random elements
+        let before: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let after: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
 
         let transform = Transform::extract(&before, &after)
             .unwrap()
@@ -448,10 +451,11 @@ mod tests {
 
     #[test]
     fn builder_pattern() {
-        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
-        let d: TropicalDualClifford<f64, 8> = TropicalDualClifford::random();
+        // Use random_versor which actually generates random elements
+        let a: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let b: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let c: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
+        let d: TropicalDualClifford<f64, 8> = TropicalDualClifford::random_versor(2);
 
         let transform = TransformBuilder::new()
             .example(a, b)

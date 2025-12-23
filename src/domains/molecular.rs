@@ -35,16 +35,15 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for FingerprintEnco
     type Input = Vec<bool>;
 
     fn encode(&self, input: &Self::Input) -> TropicalDualClifford<T, DIM> {
-        // Simple encoding: map each bit to a random direction
-        // In full implementation, would use consistent random projections
-        let mut result: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
+        // Simple encoding: map each bit to a deterministic direction
+        // Use seeded random generation based on bit position
+        let mut result: TropicalDualClifford<T, DIM> = Bindable::binding_identity();
 
         for (i, &bit) in input.iter().enumerate() {
             if bit {
-                // Create a deterministic "random" direction for bit i
-                // TODO: Use seeded RNG for deterministic generation
-                let _ = i; // Acknowledge index for future seeded generation
-                let direction = TropicalDualClifford::random();
+                // Seed based on bit index for deterministic generation
+                fastrand::seed(i as u64 + 12345);
+                let direction = TropicalDualClifford::random_versor(1);
                 result = result.bundle(&direction, 1.0);
             }
         }
@@ -98,14 +97,15 @@ impl<T: MinuetFloat, const DIM: usize> DomainEncoder<T, DIM> for SmilesEncoder<T
 
     fn encode(&self, input: &Self::Input) -> TropicalDualClifford<T, DIM> {
         let chars: Vec<char> = input.chars().collect();
-        let mut result: TropicalDualClifford<T, DIM> = TropicalDualClifford::new();
+        let mut result: TropicalDualClifford<T, DIM> = Bindable::binding_identity();
 
         // Encode character n-grams
         for window in chars.windows(self.ngram_size) {
             let ngram: String = window.iter().collect();
-            let _hash = Self::hash_ngram(&ngram);
-            // TODO: Use hash for seeded RNG for deterministic generation
-            let direction = TropicalDualClifford::random();
+            let hash = Self::hash_ngram(&ngram);
+            // Use hash for deterministic seeding
+            fastrand::seed(hash);
+            let direction = TropicalDualClifford::random_versor(1);
             result = result.bundle(&direction, 1.0);
         }
 

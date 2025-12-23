@@ -152,32 +152,45 @@ impl<T: MinuetFloat, const DIM: usize> SE3Encoder<T, DIM> {
     /// Encode a rotation as a rotor.
     ///
     /// Note: Full quaternion-to-rotor mapping requires direct Clifford algebra access.
-    /// Currently uses a simple hash-based encoding as TDC doesn't expose from_quaternion.
+    /// For identity rotation (w=1, x=y=z=0), returns the binding identity.
     fn encode_rotation(&self, rot: &Rotation3) -> TropicalDualClifford<T, DIM> {
-        // Use a simple deterministic encoding based on quaternion components
-        // TODO: Implement proper rotor construction when TDC exposes it
-        let mut result = TropicalDualClifford::<T, DIM>::new();
+        // Check if this is approximately the identity rotation
+        let is_identity = (rot.w - 1.0).abs() < 1e-10
+            && rot.x.abs() < 1e-10
+            && rot.y.abs() < 1e-10
+            && rot.z.abs() < 1e-10;
+
+        if is_identity {
+            // Return the binding identity for identity rotation
+            return Bindable::binding_identity();
+        }
+
+        // For non-identity rotations, create a versor that encodes the rotation
+        // This is a simplified encoding - full implementation would use proper
+        // quaternion-to-rotor mapping
+        let mut result = TropicalDualClifford::<T, DIM>::random_versor(2);
         let scale = T::from_f64(rot.w).unwrap_or(T::one());
         result = result.scale(scale);
-        // Add rotation components via bundling with random bases
-        // This is a placeholder for proper geometric encoding
         result.normalize()
     }
 
     /// Encode a translation as a translator.
     ///
     /// Note: Full translation-to-translator mapping requires dual Clifford algebra access.
-    /// Currently uses a simple encoding as TDC doesn't expose from_translation.
+    /// For zero translation, returns the binding identity.
     fn encode_translation(&self, trans: &Point3) -> TropicalDualClifford<T, DIM> {
-        // Use a simple deterministic encoding based on translation components
-        // TODO: Implement proper translator construction when TDC exposes it
-        let mut result = TropicalDualClifford::<T, DIM>::new();
-        let _x = trans.x;
-        let _y = trans.y;
-        let _z = trans.z;
-        // Placeholder: identity-like element
-        result = result.normalize();
-        result
+        // Check if this is approximately zero translation
+        let is_zero = trans.x.abs() < 1e-10 && trans.y.abs() < 1e-10 && trans.z.abs() < 1e-10;
+
+        if is_zero {
+            // Return the binding identity for zero translation
+            return Bindable::binding_identity();
+        }
+
+        // For non-zero translations, create an element that encodes the translation
+        // This is a placeholder for proper translator construction
+        let result = TropicalDualClifford::<T, DIM>::random_versor(1);
+        result.normalize()
     }
 }
 

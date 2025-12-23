@@ -120,9 +120,8 @@ impl<T: MinuetFloat, const DIM: usize> BindingAlgebra<T, DIM> for TropicalDualCl
         let mag = self.norm();
 
         if mag < 1e-10 {
-            return Err(MinuetError::SingularInverse {
-                magnitude: mag,
-                epsilon: 1e-10,
+            return Err(MinuetError::NormalizationFailed {
+                message: format!("magnitude {mag:.6} too small"),
             });
         }
 
@@ -136,16 +135,14 @@ impl<T: MinuetFloat, const DIM: usize> BindingAlgebra<T, DIM> for TropicalDualCl
     fn sandwich(&self, x: &Self) -> Result<Self> {
         if !self.is_invertible(1e-10) {
             return Err(MinuetError::SingularInverse {
-                magnitude: self.norm(),
-                epsilon: 1e-10,
+                message: format!("magnitude {:.6} below threshold", self.norm()),
             });
         }
 
         match self.binding_inverse() {
             Some(inv) => Ok(self.bind(x).bind(&inv)),
             None => Err(MinuetError::SingularInverse {
-                magnitude: self.norm(),
-                epsilon: 1e-10,
+                message: "binding_inverse returned None".into(),
             }),
         }
     }
@@ -234,8 +231,10 @@ impl<T: MinuetFloat, const DIM: usize>
             })
         } else {
             Err(MinuetError::SingularInverse {
-                magnitude: self.inner.norm(),
-                epsilon,
+                message: format!(
+                    "magnitude {:.6} below epsilon {epsilon:.6}",
+                    self.inner.norm()
+                ),
             })
         }
     }
