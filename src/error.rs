@@ -1,4 +1,4 @@
-//! Error types for Minuet holographic database operations.
+//! Error types for Minuet holographic memory operations.
 //!
 //! This module defines a comprehensive error hierarchy for all operations
 //! in the Minuet system, from low-level algebraic failures to high-level
@@ -6,9 +6,6 @@
 
 use std::fmt;
 use thiserror::Error;
-
-#[cfg(feature = "contracts")]
-use creusot_contracts::*;
 
 /// Primary error type for Minuet operations.
 ///
@@ -24,6 +21,10 @@ pub enum MinuetError {
         /// Minimum acceptable SNR threshold
         threshold: f64,
     },
+
+    /// Capacity exceeded (store cannot accept more items).
+    #[error("Capacity exceeded: store cannot accept more items")]
+    CapacityExceeded,
 
     /// Cannot compute inverse due to near-singular element.
     #[error("Cannot compute inverse: {message}")]
@@ -65,11 +66,16 @@ pub enum MinuetError {
     #[error("Codebook invariant violated: {0}")]
     CodebookInvariant(String),
 
+    /// Configuration error.
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     /// I/O error during persistence operations.
     #[error("Persistence error: {0}")]
     Persistence(#[from] std::io::Error),
 
     /// Serialization/deserialization error.
+    #[cfg(feature = "serde")]
     #[error("Serialization error: {0}")]
     Serialization(#[from] bincode::Error),
 
@@ -97,7 +103,7 @@ pub enum MinuetError {
         value: f64,
     },
 
-    /// Grade projection error.
+    /// Invalid grade for the algebra dimension.
     #[error("Invalid grade {grade} for dimension {dim}")]
     InvalidGrade {
         /// The requested grade
@@ -106,23 +112,9 @@ pub enum MinuetError {
         dim: usize,
     },
 
-    /// Transform extraction failed.
-    #[error("Transform extraction failed: {0}")]
-    TransformExtraction(String),
-
     /// Merge operation failed.
     #[error("Merge failed: {0}")]
     MergeFailed(String),
-
-    /// GPU backend error (only with gpu feature).
-    #[cfg(feature = "gpu")]
-    #[error("GPU error: {0}")]
-    Gpu(String),
-
-    /// Distributed operation error (only with distributed feature).
-    #[cfg(feature = "distributed")]
-    #[error("Distributed error: {0}")]
-    Distributed(String),
 
     /// Recovery from crash failed.
     #[cfg(feature = "persistence")]
@@ -135,128 +127,33 @@ pub enum MinuetError {
         /// Description of the unimplemented feature
         feature: String,
     },
+
+    /// Algebra operation error from amari-holographic.
+    #[error("Algebra error: {0}")]
+    Algebra(String),
 }
 
 /// Result type alias for Minuet operations.
-pub type Result<T> = std::result::Result<T, MinuetError>;
+pub type MinuetResult<T> = std::result::Result<T, MinuetError>;
 
-/// Capacity warning levels for proactive management.
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
-pub enum CapacityWarning {
-    /// Approaching capacity limit (SNR degrading).
-    Approaching {
-        /// Current utilization as fraction of theoretical capacity
-        utilization: f64,
-        /// Estimated remaining stores before threshold
-        remaining_stores: usize,
-    },
-    /// At capacity, further stores will fail.
-    Critical {
-        /// Current SNR
-        snr: f64,
-    },
-}
+/// Convenience alias
+pub type Result<T> = MinuetResult<T>;
 
-impl fmt::Display for CapacityWarning {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CapacityWarning::Approaching {
-                utilization,
-                remaining_stores,
-            } => {
-                write!(
-                    f,
-                    "Approaching capacity: {:.1}% utilized, ~{} stores remaining",
-                    utilization * 100.0,
-                    remaining_stores
-                )
-            }
-            CapacityWarning::Critical { snr } => {
-                write!(f, "Critical: SNR at {:.3}, capacity exhausted", snr)
-            }
-        }
-    }
-}
-
-/// Marker types for tracking algebraic state at the type level.
-pub mod markers {
-    use std::marker::PhantomData;
-
-    /// Marker indicating an element has been verified as invertible.
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct Invertible;
-
-    /// Marker indicating an element may not be invertible.
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct MaybeInvertible;
-
-    /// Marker indicating an element is normalized (unit magnitude).
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct Normalized;
-
-    /// Marker indicating an element has arbitrary magnitude.
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct Unnormalized;
-
-    /// Marker indicating an element is a pure grade (k-blade).
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct PureGrade<const K: usize>;
-
-    /// Marker indicating an element is a mixed-grade multivector.
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct MixedGrade;
-
-    /// Marker indicating an element is a versor (product of vectors).
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct Versor;
-
-    /// Marker indicating an element may not be a versor.
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct GeneralMultivector;
-
-    /// Phantom wrapper to carry type-level markers without runtime cost.
-    #[derive(Debug, Clone, Copy, Default)]
-    pub struct Marked<T, Invertibility, Normalization, GradeStructure> {
-        value: T,
-        _invertibility: PhantomData<Invertibility>,
-        _normalization: PhantomData<Normalization>,
-        _grade: PhantomData<GradeStructure>,
+impl MinuetError {
+    /// Create an algebra error from any displayable source.
+    pub fn algebra(msg: impl fmt::Display) -> Self {
+        Self::Algebra(msg.to_string())
     }
 
-    impl<T, I, N, G> Marked<T, I, N, G> {
-        /// Create a new marked value.
-        pub fn new(value: T) -> Self {
-            Self {
-                value,
-                _invertibility: PhantomData,
-                _normalization: PhantomData,
-                _grade: PhantomData,
-            }
-        }
+    /// Create a configuration error.
+    pub fn config(msg: impl Into<String>) -> Self {
+        Self::Configuration(msg.into())
+    }
 
-        /// Extract the inner value, discarding markers.
-        pub fn into_inner(self) -> T {
-            self.value
-        }
-
-        /// Reference to the inner value.
-        pub fn inner(&self) -> &T {
-            &self.value
-        }
-
-        /// Mutable reference to the inner value (use with care).
-        pub fn inner_mut(&mut self) -> &mut T {
-            &mut self.value
-        }
-
-        /// Transmute markers (unsafe operation, use only when semantically valid).
-        pub fn transmute_markers<I2, N2, G2>(self) -> Marked<T, I2, N2, G2> {
-            Marked {
-                value: self.value,
-                _invertibility: PhantomData,
-                _normalization: PhantomData,
-                _grade: PhantomData,
-            }
+    /// Create a not-implemented error.
+    pub fn not_implemented(feature: impl Into<String>) -> Self {
+        Self::NotImplemented {
+            feature: feature.into(),
         }
     }
 }
@@ -276,30 +173,8 @@ mod tests {
     }
 
     #[test]
-    fn capacity_warning_display() {
-        let warn = CapacityWarning::Approaching {
-            utilization: 0.85,
-            remaining_stores: 42,
-        };
-        let msg = warn.to_string();
-        assert!(msg.contains("85.0%"));
-        assert!(msg.contains("42"));
-    }
-
-    #[test]
-    fn phantom_markers_zero_cost() {
-        use markers::*;
-        use std::mem::size_of;
-
-        // Markers should be zero-sized
-        assert_eq!(size_of::<Invertible>(), 0);
-        assert_eq!(size_of::<Normalized>(), 0);
-        assert_eq!(size_of::<PureGrade<2>>(), 0);
-
-        // Marked wrapper should not increase size
-        assert_eq!(
-            size_of::<Marked<f64, Invertible, Normalized, Versor>>(),
-            size_of::<f64>()
-        );
+    fn algebra_error_from_string() {
+        let err = MinuetError::algebra("test error");
+        assert!(err.to_string().contains("test error"));
     }
 }

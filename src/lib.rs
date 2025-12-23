@@ -1,191 +1,162 @@
-//! # Minuet: A Holographic Database
+//! # Minuet: A Toolkit for Holographic Memory Systems
 //!
-//! Minuet is a holographic database built on `amari-fusion`'s tropical-dual-Clifford
-//! algebra. Named after Star Trek's first sentient hologram, Minuet provides memory
-//! that participates in cognition rather than merely serving it.
+//! > "The optical table for holographic computing."
 //!
-//! ## Core Proposition
+//! Minuet is an open-source Rust toolkit that extends `amari-holographic` with
+//! higher-level abstractions for building cognitive memory systems. While
+//! `amari-holographic` provides the core `BindingAlgebra` trait and algebra
+//! implementations, Minuet adds:
 //!
-//! Retrieval is a native algebraic operation, not index lookup with a translation layer.
-//! Queries are pattern completions in the same representational space as stored knowledge.
+//! - **Memory Stores**: Sharded, partitioned, and layered memory configurations
+//! - **Retrieval Strategies**: Direct, resonator-based, hybrid pipelines
+//! - **Encoding Infrastructure**: Symbol codebooks, composite encoders
+//! - **Capacity Management**: Monitoring, eviction policies, consolidation
+//! - **Persistence**: Snapshots, journaling, crash recovery
+//! - **Pipeline Composition**: Fluent builders for assembling memory systems
 //!
-//! ## Key Features
+//! Named after Star Trek's first sentient hologram, Minuet builds on the
+//! foundations of `amari-holographic` to enable application-specific memory
+//! architectures.
 //!
-//! - **Compositional associative memory** where relationships are first-class
-//! - **Analogical queries** like "find X related to Y as A is related to B" as single operations
-//! - **Graceful degradation** under noise, partial queries, and capacity pressure
-//! - **Type-safe algebra** with phantom types tracking invertibility, normalization, and grade
-//!
-//! ## Example
+//! ## Quick Start
 //!
 //! ```rust,ignore
-//! use minuet::{MemoryStore, Query, Codebook};
+//! use minuet::prelude::*;
+//! use amari_holographic::ProductCliffordAlgebra;
 //!
-//! // Create a memory store with 256-dimensional representations
-//! let memory = MemoryStore::<f64, 8>::new();
-//! let codebook = Codebook::new();
+//! type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions
 //!
-//! // Create symbols
-//! let paris = codebook.symbol("paris");
-//! let france = codebook.symbol("france");
-//! let berlin = codebook.symbol("berlin");
+//! // Create a simple memory
+//! let memory = SimpleMemory::<Algebra>::new();
 //!
-//! // Store: paris is-capital-of france
-//! memory.store(&paris, &france)?;
+//! // Create symbols from codebook
+//! let key = memory.symbol("paris");
+//! let value = memory.symbol("france");
 //!
-//! // Query: what is berlin the capital of?
-//! // (analogy: berlin:X :: paris:france)
-//! let query = Query::analogy(paris, france, berlin);
-//! let result = memory.query(query)?;
+//! // Store and retrieve
+//! memory.store(&key, &value)?;
+//! let result = memory.retrieve(&key)?;
 //! ```
 //!
 //! ## Capacity Model
 //!
 //! Holographic memory has capacity O(DIM / log DIM). For typical dimensions:
 //!
-//! | Dimension | Approx. Capacity |
-//! |-----------|------------------|
-//! | 256       | ~45 items        |
-//! | 1024      | ~150 items       |
-//! | 4096      | ~500 items       |
+//! | Algebra Type | Dimension | Approx. Capacity |
+//! |--------------|-----------|------------------|
+//! | `ProductCliffordAlgebra<32>` | 256 | ~46 items |
+//! | `ProductCliffordAlgebra<64>` | 512 | ~85 items |
+//! | `ProductCliffordAlgebra<128>` | 1024 | ~147 items |
 //!
-//! For larger capacities, use [`parallel::ShardedMemory`].
+//! For larger capacities, use [`store::ShardedStore`].
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::similar_names)]
+// Intentional casts in numeric code - dimensions won't exceed 52-bit precision
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+// These are valid but would require significant refactoring
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+// Documentation style - backticks in tables/code references
+#![allow(clippy::doc_markdown)]
 
-#[cfg(feature = "contracts")]
-use creusot_contracts::*;
+// ============================================================================
+// Re-exports from amari-holographic
+// ============================================================================
 
-// Re-export core types from amari-fusion (legacy compatibility)
-pub use amari_fusion::{
-    holographic::{Bindable, RetrievalResult},
-    TropicalDualClifford,
-};
-
-// Re-export core types from amari-holographic (recommended)
+/// Core re-exports from amari-holographic.
+///
+/// These are the fundamental types for holographic memory operations.
 pub use amari_holographic::{
-    BindingAlgebra, HolographicMemory as HoloMemory, ProductCliffordAlgebra,
-    Resonator as HoloResonator,
+    AlgebraConfig, BindingAlgebra, HolographicMemory, ProductCliffordAlgebra,
+    Resonator as HoloResonator, ResonatorConfig, RetrievalResult as HoloRetrievalResult,
 };
 
-// Core modules
-pub mod algebra;
-pub mod binding;
+// ============================================================================
+// Core Modules
+// ============================================================================
+
+/// Core trait definitions for Minuet abstractions.
+pub mod traits;
+
+/// Error types and result aliases.
 pub mod error;
-pub mod memory;
-pub mod parallel;
+
+/// Memory store implementations.
+pub mod store;
+
+/// Encoding infrastructure (codebooks, symbol encoders).
+pub mod encoding;
+
+/// Retrieval strategies (resonators, cleanup).
 pub mod retrieval;
 
-// Feature-gated modules
-#[cfg(feature = "persistence")]
-pub mod persistence;
+/// Capacity management (monitoring, eviction, consolidation).
+pub mod capacity;
 
-#[cfg(feature = "gpu")]
-pub mod gpu;
+/// Pipeline composition (builders, executors).
+pub mod pipeline;
 
-pub mod domains;
+/// Reference implementations for learning and simple use cases.
+pub mod reference;
 
-// Public re-exports for convenience
-pub use algebra::{Algebra, Algebra256, DefaultAlgebra, SmallAlgebra};
-#[cfg(feature = "holographic")]
-pub use algebra::{Algebra1024, Algebra512};
-pub use binding::{Codebook, SymbolGenerator, Transform};
-pub use error::{CapacityWarning, MinuetError, Result};
-pub use memory::{CapacityInfo, MemoryStore, MemoryTrace, Query, QueryResult, StoreReceipt};
-pub use parallel::{batch, ShardedMemory};
-pub use retrieval::{Attribution, Resonator, Temperature};
+// ============================================================================
+// Feature-gated Modules
+// ============================================================================
 
-/// Precision traits for numeric operations.
+// Persistence layer - to be implemented in a future version
+// #[cfg(feature = "persistence")]
+// pub mod persistence;
+
+// ============================================================================
+// Prelude
+// ============================================================================
+
+/// Prelude module for convenient imports.
 ///
-/// This module provides abstractions over floating-point types to allow
-/// seamless switching between f32, f64, and high-precision types.
-pub mod precision {
-    use num_traits::{Float, FromPrimitive, NumCast, ToPrimitive};
-    use serde::{de::DeserializeOwned, Serialize};
-    use std::fmt::Debug;
-    use std::iter::Sum;
-    use std::ops::{Add, Div, Mul, Neg, Sub};
+/// Import everything commonly needed with:
+/// ```rust,ignore
+/// use minuet::prelude::*;
+/// ```
+pub mod prelude {
+    // Core traits
+    pub use crate::traits::{
+        CapacityInfo, CapacityPolicy, CapacityWarning, CleanupResult, Codebook, Encoder,
+        MemoryStore, MemoryTrace, PressureResponse, RetrievalContext, RetrievalResult, Retriever,
+        StoreOptions, StoreReceipt, TraceCapacityInfo,
+    };
 
-    /// Trait bounds for numeric types usable in Minuet.
-    ///
-    /// This trait encapsulates all the numeric operations needed for
-    /// holographic memory operations.
-    pub trait MinuetFloat:
-        Float
-        + FromPrimitive
-        + ToPrimitive
-        + NumCast
-        + Sum
-        + Debug
-        + Clone
-        + Copy
-        + Send
-        + Sync
-        + Default
-        + Serialize
-        + DeserializeOwned
-        + Add<Output = Self>
-        + Sub<Output = Self>
-        + Mul<Output = Self>
-        + Div<Output = Self>
-        + Neg<Output = Self>
-        + 'static
-    {
-        /// Machine epsilon for this type.
-        const EPSILON: Self;
+    // Error types
+    pub use crate::error::{MinuetError, MinuetResult, Result};
 
-        /// Minimum positive normal value.
-        const MIN_POSITIVE: Self;
+    // Store implementations
+    pub use crate::store::{DenseTrace, ShardedStore, SimpleStore};
 
-        /// Maximum finite value.
-        const MAX: Self;
+    // Encoding
+    pub use crate::encoding::HashMapCodebook;
 
-        /// The constant pi.
-        const PI: Self;
+    // Retrieval
+    pub use crate::retrieval::{DirectRetriever, ResonatorRetriever};
 
-        /// The constant e.
-        const E: Self;
+    // Pipeline
+    pub use crate::pipeline::PipelineBuilder;
 
-        /// Default tolerance for approximate equality.
-        fn default_tolerance() -> Self;
+    // Reference implementations
+    pub use crate::reference::SimpleMemory;
 
-        /// Check if two values are approximately equal.
-        fn approx_eq(self, other: Self, tolerance: Self) -> bool {
-            (self - other).abs() <= tolerance
-        }
-    }
-
-    impl MinuetFloat for f32 {
-        const EPSILON: Self = f32::EPSILON;
-        const MIN_POSITIVE: Self = f32::MIN_POSITIVE;
-        const MAX: Self = f32::MAX;
-        const PI: Self = std::f32::consts::PI;
-        const E: Self = std::f32::consts::E;
-
-        fn default_tolerance() -> Self {
-            1e-5
-        }
-    }
-
-    impl MinuetFloat for f64 {
-        const EPSILON: Self = f64::EPSILON;
-        const MIN_POSITIVE: Self = f64::MIN_POSITIVE;
-        const MAX: Self = f64::MAX;
-        const PI: Self = std::f64::consts::PI;
-        const E: Self = std::f64::consts::E;
-
-        fn default_tolerance() -> Self {
-            1e-10
-        }
-    }
-
-    #[cfg(feature = "high-precision")]
-    pub use num_bigfloat::BigFloat;
+    // Re-export key algebra types from amari-holographic
+    pub use amari_holographic::{BindingAlgebra, ProductCliffordAlgebra};
 }
+
+// ============================================================================
+// Dimension Utilities
+// ============================================================================
 
 /// Compile-time dimension utilities.
 ///
@@ -193,54 +164,28 @@ pub mod precision {
 pub mod dimensions {
     /// Compute theoretical capacity for a given dimension.
     ///
-    /// Capacity scales as O(algebra_dim / log(algebra_dim)), where
-    /// `algebra_dim = 2^DIM` is the number of basis elements in the Clifford algebra.
+    /// Capacity scales as O(dim / log(dim)).
     ///
-    /// For DIM=8: algebra_dim=256, capacity ≈ 256/8 = 32
-    /// For DIM=16: algebra_dim=65536, capacity ≈ 65536/16 = 4096
+    /// # Examples
+    /// - For dim=256: capacity ≈ 256/log(256) ≈ 46
+    /// - For dim=1024: capacity ≈ 1024/log(1024) ≈ 147
     #[must_use]
-    pub const fn theoretical_capacity(dim: usize) -> usize {
-        // algebra_dim = 2^dim (number of basis elements)
-        let algebra_dim = 1usize << dim;
-        // log2(algebra_dim) = dim (by definition)
-        if dim == 0 {
-            0
-        } else {
-            algebra_dim / dim
+    pub fn theoretical_capacity(dim: usize) -> usize {
+        if dim <= 1 {
+            return dim;
         }
+        let log_dim = (dim as f64).ln();
+        (dim as f64 / log_dim) as usize
     }
 
-    /// Check if dimension is a power of two (preferred for efficiency).
+    /// Estimate signal-to-noise ratio for given dimension and item count.
     #[must_use]
-    pub const fn is_power_of_two(dim: usize) -> bool {
-        dim > 0 && (dim & (dim - 1)) == 0
+    pub fn estimate_snr(dim: usize, item_count: usize) -> f64 {
+        if item_count == 0 {
+            return f64::INFINITY;
+        }
+        (dim as f64 / item_count as f64).sqrt()
     }
-
-    /// Get the grade count for a given dimension (number of basis blades).
-    #[must_use]
-    pub const fn grade_count(dim: usize) -> usize {
-        dim + 1
-    }
-
-    /// Get the total number of basis elements (2^dim for Clifford algebra).
-    #[must_use]
-    pub const fn basis_count(dim: usize) -> usize {
-        1 << dim
-    }
-}
-
-/// Prelude module for convenient imports.
-pub mod prelude {
-    pub use crate::algebra::{Algebra, DefaultAlgebra};
-    pub use crate::binding::{Codebook, Transform};
-    pub use crate::error::{MinuetError, Result};
-    pub use crate::memory::{MemoryStore, MemoryTrace, Query};
-    pub use crate::precision::MinuetFloat;
-    pub use crate::retrieval::{Resonator, Temperature};
-
-    // Re-export key algebra types
-    pub use amari_fusion::{holographic::Bindable, TropicalDualClifford};
-    pub use amari_holographic::{BindingAlgebra, ProductCliffordAlgebra};
 }
 
 #[cfg(test)]
@@ -249,26 +194,18 @@ mod tests {
 
     #[test]
     fn dimension_utilities() {
-        // theoretical_capacity(dim) = 2^dim / dim
-        // For DIM=8: 2^8 / 8 = 256 / 8 = 32
-        assert_eq!(dimensions::theoretical_capacity(8), 32);
-        // For DIM=10: 2^10 / 10 = 1024 / 10 = 102
-        assert_eq!(dimensions::theoretical_capacity(10), 102);
-        assert!(dimensions::is_power_of_two(256));
-        assert!(!dimensions::is_power_of_two(257));
-        assert_eq!(dimensions::grade_count(8), 9);
-        assert_eq!(dimensions::basis_count(8), 256);
+        // ProductCliffordAlgebra<32> has 256 dimensions
+        let cap = dimensions::theoretical_capacity(256);
+        assert!(cap > 40 && cap < 50, "expected ~46, got {}", cap);
+
+        // ProductCliffordAlgebra<128> has 1024 dimensions
+        let cap = dimensions::theoretical_capacity(1024);
+        assert!(cap > 140 && cap < 160, "expected ~147, got {}", cap);
     }
 
     #[test]
-    fn float_tolerance() {
-        use precision::MinuetFloat;
-
-        let a: f64 = 1.0;
-        let b: f64 = 1.0 + 1e-11;
-        assert!(a.approx_eq(b, f64::default_tolerance()));
-
-        let c: f64 = 1.0 + 1e-9;
-        assert!(!a.approx_eq(c, f64::default_tolerance()));
+    fn snr_estimation() {
+        let snr = dimensions::estimate_snr(256, 16);
+        assert!((snr - 4.0).abs() < 0.01); // sqrt(256/16) = 4
     }
 }
