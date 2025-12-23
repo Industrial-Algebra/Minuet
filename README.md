@@ -1,45 +1,213 @@
-# Minuet: A Holographic Database
+# Minuet
 
-> "A mind graft, not a translation layer."
+[![CI](https://github.com/industrial-algebra/minuet/actions/workflows/ci.yml/badge.svg)](https://github.com/industrial-algebra/minuet/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/minuet.svg)](https://crates.io/crates/minuet)
+[![Documentation](https://docs.rs/minuet/badge.svg)](https://docs.rs/minuet)
+[![License](https://img.shields.io/crates/l/minuet.svg)](LICENSE)
 
-**Minuet** is a holographic database built on `amari-fusion`'s tropical-dual-Clifford algebra. Named after Star Trek's first sentient hologram, Minuet provides memory that participates in cognition rather than merely serving it.
+> "The optical table for holographic computing."
 
-## Core Proposition
+**Minuet** is a Rust toolkit for building holographic memory systems, extending [`amari-holographic`](https://crates.io/crates/amari-holographic) with higher-level abstractions for cognitive memory architectures.
 
-Retrieval is a native algebraic operation, not index lookup with a translation layer. Queries are pattern completions in the same representational space as stored knowledge.
+Named after Star Trek's first sentient hologram, Minuet provides memory that participates in cognition rather than merely serving it.
 
-## Features
+## What is Holographic Memory?
 
-- **Compositional associative memory** where relationships are first-class
-- **Analogical queries** like "find X related to Y as A is related to B" as single operations
-- **Graceful degradation** under noise, partial queries, and capacity pressure
-- **Type-safe algebra** with phantom types tracking invertibility, normalization, and grade
-- **Formal verification** support via Creusot contracts
-- **High-precision numerics** with f64 and optional BigFloat support
+Holographic memory stores information in **superposition** using high-dimensional algebraic representations. Unlike traditional key-value stores:
+
+- **Retrieval is algebraic**: Queries are pattern completions in the same representational space as stored knowledge
+- **Relationships are first-class**: Associations are stored as algebraic bindings, enabling analogical queries
+- **Graceful degradation**: Memory degrades smoothly under capacity pressure rather than failing catastrophically
+- **Compositional**: Complex structures are built from simple binding and bundling operations
 
 ## Quick Start
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+minuet = "0.1"
+amari-holographic = "0.12"
+```
+
+### Basic Usage
 
 ```rust
 use minuet::prelude::*;
 
-// Create a memory store
-let memory: BasicMemoryStore<f64, 128> = BasicMemoryStore::new();
-let codebook: Codebook<f64, 128> = Codebook::new();
+// Choose an algebra - ProductCliffordAlgebra<K> has 8*K dimensions
+type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions, ~85 item capacity
 
-// Create symbols
-let paris = codebook.symbol("paris");
-let france = codebook.symbol("france");
-let berlin = codebook.symbol("berlin");
+fn main() -> MinuetResult<()> {
+    // Create a simple memory (combines store + codebook)
+    let memory = SimpleMemory::<Algebra>::new();
 
-// Store: paris is associated with france
-memory.store(&paris, &france)?;
+    // Store associations between symbols
+    memory.store_symbols("paris", "france")?;
+    memory.store_symbols("berlin", "germany")?;
+    memory.store_symbols("rome", "italy")?;
 
-// Direct retrieval
-let result = memory.retrieve(&paris)?;
+    // Recall: given a key, find the associated value
+    if let Some((value, confidence)) = memory.recall("paris")? {
+        println!("paris -> {} (confidence: {:.2})", value, confidence);
+    }
 
-// Analogy query: what is to berlin as france is to paris?
-let query = Query::analogy(paris, france, berlin);
-let analogy_result = memory.query(query)?;
+    // Direct algebra operations
+    let dog = memory.symbol("dog");
+    let bark = memory.symbol("bark");
+    memory.store(&dog, &bark)?;
+
+    Ok(())
+}
+```
+
+### Pipeline Composition
+
+For more control, compose custom pipelines:
+
+```rust
+use minuet::prelude::*;
+use minuet::capacity::RejectPolicy;
+
+type Algebra = ProductCliffordAlgebra<32>; // 256 dimensions
+
+fn main() -> MinuetResult<()> {
+    // Build a custom pipeline
+    let pipeline = PipelineBuilder::<Algebra>::new()
+        .with_store(ShardedStore::with_shards(4))      // 4 shards for ~4x capacity
+        .with_retriever(ResonatorRetriever::new())     // Cleanup via resonator network
+        .with_codebook(HashMapCodebook::new())         // Symbol vocabulary
+        .with_capacity_policy(RejectPolicy::with_threshold(0.9))
+        .build()?;
+
+    // Use the pipeline
+    let key = pipeline.symbol("query");
+    let value = pipeline.symbol("result");
+    pipeline.store(&key, &value)?;
+
+    let result = pipeline.retrieve(&key)?;
+    println!("Retrieved with confidence: {:.2}", result.confidence);
+
+    Ok(())
+}
+```
+
+## Core Concepts
+
+### Binding Algebras
+
+Minuet is generic over any `BindingAlgebra` from `amari-holographic`. The algebra provides:
+
+| Operation | Symbol | Description |
+|-----------|--------|-------------|
+| **Bind** | `a.bind(&b)` | Create association (dissimilar to inputs) |
+| **Bundle** | `a.bundle(&b, β)` | Superpose (similar to inputs) |
+| **Unbind** | `key.unbind(&trace)` | Retrieve associated value |
+| **Similarity** | `a.similarity(&b)` | Measure closeness [-1, 1] |
+
+Available algebras:
+
+| Type | Dimensions | Use Case |
+|------|------------|----------|
+| `ProductCliffordAlgebra<K>` | 8×K | General purpose, recommended |
+| `Cl3` | 8 | Small/embedded systems |
+| `FHRRAlgebra<D>` | D | Frequency domain operations |
+| `MAPAlgebra<D>` | D | Binary/bipolar systems |
+
+### Memory Traces
+
+A **trace** stores items in superposition:
+
+```rust
+use minuet::store::DenseTrace;
+
+let mut trace = DenseTrace::<Algebra>::new();
+
+// Add items (they superpose)
+trace.add(&item1, 1.0);  // weight = 1.0
+trace.add(&item2, 1.0);
+
+// Query similarity
+let sim = trace.similarity(&item1);  // High similarity
+
+// Unbind to retrieve
+let retrieved = trace.unbind(&key);
+```
+
+### Memory Stores
+
+Stores manage one or more traces:
+
+| Store | Description |
+|-------|-------------|
+| `SimpleStore` | Single trace, minimal overhead |
+| `ShardedStore` | Hash-sharded across N traces for N× capacity |
+
+```rust
+// Simple store for small workloads
+let simple = SimpleStore::<Algebra>::new();
+
+// Sharded store for larger capacity
+let sharded = ShardedStore::<Algebra>::with_shards(8);
+```
+
+### Codebooks
+
+Codebooks provide consistent symbol-to-vector mappings:
+
+```rust
+use minuet::encoding::HashMapCodebook;
+
+let codebook = HashMapCodebook::<Algebra>::new();
+
+// Same name always returns same vector
+let v1 = codebook.symbol("hello");
+let v2 = codebook.symbol("hello");
+assert!(v1.similarity(&v2) > 0.99);
+
+// Find closest symbol to a vector
+if let Some((name, similarity)) = codebook.closest(&query) {
+    println!("Closest: {} ({:.2})", name, similarity);
+}
+```
+
+### Retrievers
+
+Retrievers clean up noisy retrieval results:
+
+| Retriever | Description |
+|-----------|-------------|
+| `DirectRetriever` | Return raw result (no cleanup) |
+| `ResonatorRetriever` | Iterative cleanup via resonator network |
+
+```rust
+use minuet::retrieval::ResonatorRetriever;
+
+// Resonator with custom settings
+let retriever = ResonatorRetriever::<Algebra>::new()
+    .initial_temperature(1.0)   // Start soft
+    .final_temperature(100.0)   // End hard
+    .max_iterations(50);
+```
+
+### Capacity Management
+
+Holographic memory has finite capacity based on dimensions:
+
+| Algebra | Dimensions | Approximate Capacity |
+|---------|------------|---------------------|
+| `ProductCliffordAlgebra<16>` | 128 | ~23 items |
+| `ProductCliffordAlgebra<32>` | 256 | ~46 items |
+| `ProductCliffordAlgebra<64>` | 512 | ~85 items |
+| `ProductCliffordAlgebra<128>` | 1024 | ~147 items |
+
+Capacity scales as **O(D / ln D)** where D is dimension.
+
+For larger workloads, use `ShardedStore`:
+
+```rust
+// 8 shards × 85 items ≈ 680 item capacity
+let store = ShardedStore::<ProductCliffordAlgebra<64>>::with_shards(8);
 ```
 
 ## Architecture
@@ -47,152 +215,117 @@ let analogy_result = memory.query(query)?;
 ```
 minuet/
 ├── src/
-│   ├── lib.rs              # Main library entry
-│   ├── error.rs            # Error types with phantom markers
-│   ├── memory/             # Core holographic storage
-│   │   ├── trace.rs        # Holographic trace (superposition)
-│   │   ├── store.rs        # MemoryStore trait + implementations
-│   │   ├── query.rs        # Query builder (key, analogy, transform)
-│   │   └── capacity.rs     # SNR tracking and capacity estimation
-│   ├── binding/            # Algebraic operations
-│   │   ├── algebra.rs      # Extended Bindable trait
-│   │   ├── codebook.rs     # Symbol vocabularies
-│   │   └── transform.rs    # Reified transformations
-│   ├── retrieval/          # Cleanup and attribution
-│   │   ├── resonator.rs    # Iterative cleanup networks
-│   │   ├── attribution.rs  # Provenance tracking
-│   │   └── temperature.rs  # Soft/hard retrieval control
-│   ├── parallel/           # Parallel operations
-│   │   ├── batch.rs        # Rayon-based batch ops
-│   │   ├── sharded.rs      # Sharded memory for scale
-│   │   └── merge.rs        # Parallel trace merging
-│   ├── persistence/        # Durability (optional)
-│   ├── gpu/                # GPU acceleration (optional)
-│   └── domains/            # Domain-specific encoders
-│       ├── molecular.rs    # SMILES, fingerprints
-│       ├── geometric.rs    # SE(3) motors
-│       └── symbolic.rs     # Code ASTs
-├── tests/
-│   └── algebraic_laws.rs   # Property-based tests
-├── benches/                # Criterion benchmarks
-└── examples/               # Usage examples
-```
-
-## Capacity Model
-
-Holographic memory has capacity O(DIM / log DIM):
-
-| Dimension | Approx. Capacity |
-|-----------|------------------|
-| 64        | ~10 items        |
-| 256       | ~45 items        |
-| 1024      | ~150 items       |
-| 4096      | ~500 items       |
-
-For larger capacities, use `ShardedMemory` which distributes across multiple traces.
-
-## Features
-
-```toml
-[dependencies]
-minuet = { version = "0.1", features = ["default"] }
-
-# Optional features:
-# contracts    - Creusot formal verification
-# high-precision - BigFloat numerics
-# gpu          - WGPU acceleration
-# persistence  - RocksDB durability
-# distributed  - Tokio/Tonic networking
-# full         - All optional features
+│   ├── lib.rs           # Re-exports and prelude
+│   ├── traits.rs        # Core trait definitions
+│   ├── error.rs         # Error types
+│   ├── store/           # Memory storage
+│   │   ├── trace.rs     # DenseTrace - fundamental storage unit
+│   │   ├── simple.rs    # SimpleStore - single-trace store
+│   │   └── sharded.rs   # ShardedStore - hash-sharded store
+│   ├── encoding/        # Symbol encoding
+│   │   └── codebook.rs  # HashMapCodebook
+│   ├── retrieval/       # Cleanup strategies
+│   │   ├── direct.rs    # DirectRetriever
+│   │   └── resonator_retriever.rs
+│   ├── capacity/        # Capacity management
+│   │   └── mod.rs       # RejectPolicy, AcceptAllPolicy
+│   ├── pipeline/        # Composition
+│   │   └── builder.rs   # PipelineBuilder
+│   └── reference/       # Reference implementations
+│       └── simple_memory.rs  # SimpleMemory
+├── examples/
+│   ├── simple_memory.rs    # Basic usage
+│   └── compose_pipeline.rs # Pipeline composition
+└── tests/
 ```
 
 ## Examples
 
-### Molecular Analogy
+### Simple Memory
+
+Basic store-and-recall operations:
 
 ```bash
-cargo run --example molecular_analogy
+cargo run --example simple_memory
 ```
 
-Demonstrates drug-target relationship queries.
+### Pipeline Composition
 
-### Code Semantic Search
+Building custom pipelines with sharding and resonator cleanup:
 
 ```bash
-cargo run --example code_semantic_search
+cargo run --example compose_pipeline
 ```
 
-Semantic code search using AST encoding.
+## Feature Flags
 
-### Motor Primitives
-
-```bash
-cargo run --example motor_primitives
+```toml
+[dependencies]
+minuet = { version = "0.1", features = ["parallel"] }
 ```
 
-SE(3) motor composition for robotics.
+| Feature | Description | Dependencies |
+|---------|-------------|--------------|
+| `default` | Standard features | `std` |
+| `std` | Standard library support | - |
+| `parallel` | Rayon parallelism | `rayon` |
+| `serde` | Serialization | `serde`, `bincode` |
+| `persistence` | RocksDB storage | `rocksdb`, `serde` |
+| `async` | Async support | `tokio` |
+| `full` | All features | all above |
 
-### Working Memory Agent
+## Algebraic Guarantees
 
-```bash
-cargo run --example working_memory_agent
-```
+The underlying `BindingAlgebra` satisfies:
 
-Context-dependent associative memory for AI agents.
+1. **Identity**: `x.bind(&A::identity()) = x`
+2. **Inverse**: `x.bind(&x.inverse()?) ≈ A::identity()`
+3. **Dissimilarity**: `a.bind(&b)` is dissimilar to both `a` and `b`
+4. **Bundle Similarity**: `a.bundle(&b, β)?` is similar to both `a` and `b`
+5. **Distributivity**: `a.bind(&b.bundle(&c, β)?) ≈ a.bind(&b).bundle(&a.bind(&c), β)?`
 
-## Benchmarks
+## Performance Considerations
 
-```bash
-cargo bench
-```
+- **Dimension Choice**: Higher dimensions = more capacity but slower operations
+- **Sharding**: Use `ShardedStore` when single-trace capacity is insufficient
+- **Retriever**: `DirectRetriever` is fastest; `ResonatorRetriever` improves accuracy
+- **Bundling Temperature**: β=1.0 (soft) preserves more information; β=∞ (hard) is faster
 
-Runs benchmarks for:
-- Binding throughput (sequential vs parallel)
-- Retrieval latency at various loads
-- Capacity scaling
-- Parallel operation speedup
+## Use Cases
+
+| Domain | Application |
+|--------|-------------|
+| **Cognitive Agents** | Working memory with associative recall |
+| **Knowledge Graphs** | Relationship storage and analogical queries |
+| **Semantic Search** | Content-addressable retrieval |
+| **Neurosymbolic AI** | Symbol grounding with compositional generalization |
+| **Robotics** | Motor primitive composition |
+
+## What Minuet Is Not
+
+- ❌ A replacement for vector databases at scale (millions of items)
+- ❌ A general-purpose key-value store
+- ❌ An embedding similarity search engine
+
+Minuet excels at **small-to-medium associative memories** where algebraic structure matters.
 
 ## Testing
 
 ```bash
-# Unit tests
+# Run all tests
 cargo test
 
-# Property-based algebraic law tests
-cargo test --test algebraic_laws
+# Run with all features
+cargo test --all-features
 
-# With contracts (requires Creusot)
-cargo test --features contracts
+# Run examples
+cargo run --example simple_memory
+cargo run --example compose_pipeline
 ```
 
-## Algebraic Guarantees
+## Minimum Supported Rust Version
 
-The binding algebra satisfies:
-
-1. **Identity**: `x ⊛ I ≈ x`
-2. **Inverse**: `x ⊛ x⁻¹ ≈ I`
-3. **Associativity**: `(a ⊛ b) ⊛ c ≈ a ⊛ (b ⊛ c)`
-4. **Dissimilarity**: `a ⊛ b` is dissimilar to both `a` and `b`
-5. **Distributivity**: `a ⊛ (b ⊕ c) ≈ (a ⊛ b) ⊕ (a ⊛ c)`
-
-These are verified by property-based tests in `tests/algebraic_laws.rs`.
-
-## Intended Use Cases
-
-| Domain | Key Operation |
-|--------|---------------|
-| Drug discovery | Molecular analogy: "X relates to target T as drug D relates to its target" |
-| Robotics | Motor primitive composition with native SE(3) geometry |
-| Code understanding | Semantic search and refactoring-as-transformation |
-| Legal reasoning | Precedent retrieval by analogical structure |
-| Multi-agent systems | Mergeable world models, theory of mind |
-| Neurosymbolic AI | Symbol grounding with compositional generalization |
-
-## What Minuet Is Not
-
-- A replacement for vector databases at scale
-- A general-purpose DBMS
-- An embedding similarity search engine
+Rust **nightly** is required. This enables compatibility with `amari-gpu` for future GPU-accelerated implementations.
 
 ## License
 
@@ -200,7 +333,11 @@ MIT OR Apache-2.0
 
 ## References
 
-- [amari-fusion](https://github.com/justinelliottcobb/Amari) - Tropical-dual-Clifford algebra
-- [Creusot](https://github.com/creusot-rs/creusot) - Formal verification for Rust
+- [amari-holographic](https://crates.io/crates/amari-holographic) - Core binding algebras
 - Holographic Reduced Representations (Plate, 1995)
 - Hyperdimensional Computing (Kanerva, 2009)
+- Vector Symbolic Architectures (Gayler, 2003)
+
+## Contributing
+
+Contributions welcome! Please see the [GitHub repository](https://github.com/industrial-algebra/minuet) for issues and pull requests.
