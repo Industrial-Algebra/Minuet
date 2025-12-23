@@ -325,7 +325,7 @@ cargo run --example compose_pipeline
 
 ## Minimum Supported Rust Version
 
-Rust 1.80 or later.
+Rust 1.83 or later.
 
 ## License
 
