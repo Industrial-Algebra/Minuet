@@ -2,7 +2,8 @@
 name = "minuet"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.83"
+# Requires nightly for amari-gpu compatibility
+# rust-version = "nightly"
 description = "Extended memory systems built on amari-holographic"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/industrial-algebra/minuet"

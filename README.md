@@ -325,7 +325,7 @@ cargo run --example compose_pipeline
 
 ## Minimum Supported Rust Version
 
-Rust 1.83 or later.
+Rust **nightly** is required. This enables compatibility with `amari-gpu` for future GPU-accelerated implementations.
 
 ## License
 
