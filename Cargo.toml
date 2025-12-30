@@ -62,7 +62,12 @@ async = ["tokio"]
 optical = ["serde", "ordered-float", "rand", "rand_chacha"]
 full = ["parallel", "serde", "persistence", "async", "optical"]
 
-# Benchmarks and examples will be added in Phase 6
+# Examples with feature requirements
+[[example]]
+name = "optical_memory_demo"
+required-features = ["optical"]
+
+# Benchmarks will be added in Phase 6
 # [[bench]]
 # name = "binding_throughput"
 # harness = false
