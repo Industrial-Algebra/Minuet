@@ -67,6 +67,14 @@ full = ["parallel", "serde", "persistence", "async", "optical"]
 name = "optical_memory_demo"
 required-features = ["optical"]
 
+[[example]]
+name = "optical_fingerprint_demo"
+required-features = ["optical"]
+
+[[example]]
+name = "optical_expressions_demo"
+required-features = ["optical"]
+
 # Benchmarks will be added in Phase 6
 # [[bench]]
 # name = "binding_throughput"
