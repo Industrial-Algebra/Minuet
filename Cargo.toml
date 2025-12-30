@@ -14,8 +14,7 @@ categories = ["data-structures", "science", "algorithms"]
 [dependencies]
 # Core holographic types (required)
 # Provides: BindingAlgebra, HolographicMemory, Resonator, algebras
-# Using local path for optical module (not yet published to crates.io)
-amari-holographic = { path = "../../math/amari/amari-holographic", features = ["serialize"] }
+amari-holographic = { version = "0.15", features = ["serialize"] }
 
 # Utilities
 thiserror = "2.0"
