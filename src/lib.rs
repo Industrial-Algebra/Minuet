@@ -110,6 +110,15 @@ pub mod reference;
 // Feature-gated Modules
 // ============================================================================
 
+/// Optical backend with checkpoint-based persistence.
+///
+/// Provides hardware abstraction for optical computing (DMD + MMF systems)
+/// with journal-based persistence that's portable across hardware.
+///
+/// Enable with `features = ["optical"]`.
+#[cfg(feature = "optical")]
+pub mod optical;
+
 // Persistence layer - to be implemented in a future version
 // #[cfg(feature = "persistence")]
 // pub mod persistence;
