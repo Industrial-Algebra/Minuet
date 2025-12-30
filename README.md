@@ -11,6 +11,15 @@
 
 Named after Star Trek's first sentient hologram, Minuet provides memory that participates in cognition rather than merely serving it.
 
+## What's New in 0.2.0
+
+- **Optical Backend**: Hardware abstraction for optical holographic computing (DMD + MMF systems)
+- **Checkpoint Persistence**: Journal-based state persistence portable across hardware
+- **T-Matrix Fingerprinting**: Fast hardware validation without full recalibration
+- **Symbolic Expressions**: Hardware-independent memory representation (symbols, bindings, bundles)
+
+See the [CHANGELOG](CHANGELOG.md) for full details.
+
 ## What is Holographic Memory?
 
 Holographic memory stores information in **superposition** using high-dimensional algebraic representations. Unlike traditional key-value stores:
@@ -26,8 +35,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-minuet = "0.1"
-amari-holographic = "0.12"
+minuet = "0.2"
+amari-holographic = "0.15"
 ```
 
 ### Basic Usage
@@ -87,6 +96,55 @@ fn main() -> MinuetResult<()> {
 
     let result = pipeline.retrieve(&key)?;
     println!("Retrieved with confidence: {:.2}", result.confidence);
+
+    Ok(())
+}
+```
+
+### Optical Backend (New in 0.2.0)
+
+For optical holographic computing systems:
+
+```rust
+use minuet::optical::{
+    CheckpointConfig, CheckpointedOpticalMemory,
+    MockOpticalHardware, SymbolicExpression,
+};
+use std::path::PathBuf;
+use std::time::Duration;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create optical memory with mock hardware
+    let hardware = MockOpticalHardware::new(42);
+    let config = CheckpointConfig {
+        journal_path: PathBuf::from("/tmp/memory.bin"),
+        interval: Duration::from_secs(300),
+        ..Default::default()
+    };
+
+    let mut memory = CheckpointedOpticalMemory::new(
+        hardware, encoder_config, codebook_config, config,
+    )?;
+
+    // Store using symbolic expressions
+    memory.store(
+        SymbolicExpression::role_filler("AGENT", "John"),
+        SymbolicExpression::role_filler("ACTION", "run"),
+    )?;
+
+    // Retrieve
+    if let Some(result) = memory.retrieve(
+        &SymbolicExpression::role_filler("AGENT", "John")
+    )? {
+        println!("John's action: {:?}", result.value);
+    }
+
+    // Checkpoint (saves to journal)
+    memory.checkpoint()?;
+
+    // Restore on any hardware (same or different)
+    let new_hardware = MockOpticalHardware::new(999);
+    let restored = CheckpointedOpticalMemory::restore(new_hardware, config)?;
 
     Ok(())
 }
@@ -210,6 +268,38 @@ For larger workloads, use `ShardedStore`:
 let store = ShardedStore::<ProductCliffordAlgebra<64>>::with_shards(8);
 ```
 
+### Optical Backend (New in 0.2.0)
+
+The optical module provides hardware abstraction for optical holographic computing:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                 CheckpointedOpticalMemory               │
+│  • store() / retrieve() - optical hot paths             │
+│  • checkpoint() - periodic persistence                  │
+│  • restore() - hardware-independent recovery            │
+├─────────────────────────────────────────────────────────┤
+│     MemoryJournal     TMatrixFingerprint   OpticalHardware │
+│      (portable)         (validation)         (backend)    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key Concepts:**
+
+- **Hardware as Accelerator**: Optical hardware computes, but doesn't store. State is persisted independently.
+- **Portable Checkpoints**: Save on one device, restore on another.
+- **T-Matrix Fingerprinting**: Detect hardware drift or replacement without full recalibration.
+- **Symbolic Expressions**: Hardware-independent representation using symbols, bindings, and bundles.
+
+**Persistence Model:**
+
+| Layer | Content | Portability |
+|-------|---------|-------------|
+| Semantic | Associations, relationships | Fully portable |
+| Codebook | Symbol → seed mappings | Regenerable |
+| Holograms | Binary patterns | Derived on demand |
+| Calibration | T-matrix, learned patterns | Hardware-bound |
+
 ## Architecture
 
 ```
@@ -231,37 +321,57 @@ minuet/
 │   │   └── mod.rs       # RejectPolicy, AcceptAllPolicy
 │   ├── pipeline/        # Composition
 │   │   └── builder.rs   # PipelineBuilder
-│   └── reference/       # Reference implementations
-│       └── simple_memory.rs  # SimpleMemory
+│   ├── reference/       # Reference implementations
+│   │   └── simple_memory.rs  # SimpleMemory
+│   └── optical/         # Optical backend (feature-gated)
+│       ├── mod.rs       # Module exports
+│       ├── symbolic.rs  # SymbolicExpression types
+│       ├── journal.rs   # MemoryJournal, MemoryOp
+│       ├── fingerprint.rs # TMatrixFingerprint
+│       ├── hardware.rs  # OpticalHardware trait
+│       ├── mock_hardware.rs # MockOpticalHardware
+│       └── checkpoint.rs # CheckpointedOpticalMemory
+├── docs/
+│   └── API.md           # Complete API reference
 ├── examples/
-│   ├── simple_memory.rs    # Basic usage
-│   └── compose_pipeline.rs # Pipeline composition
+│   ├── simple_memory.rs           # Basic usage
+│   ├── compose_pipeline.rs        # Pipeline composition
+│   ├── optical_memory_demo.rs     # Optical backend demo
+│   ├── optical_fingerprint_demo.rs # T-matrix fingerprinting
+│   └── optical_expressions_demo.rs # Symbolic expressions
 └── tests/
 ```
 
 ## Examples
 
-### Simple Memory
-
-Basic store-and-recall operations:
+### Basic Examples
 
 ```bash
+# Simple memory operations
 cargo run --example simple_memory
+
+# Pipeline composition with sharding
+cargo run --example compose_pipeline
 ```
 
-### Pipeline Composition
-
-Building custom pipelines with sharding and resonator cleanup:
+### Optical Examples (requires `optical` feature)
 
 ```bash
-cargo run --example compose_pipeline
+# Full optical memory demo with checkpoint/restore
+cargo run --example optical_memory_demo --features optical
+
+# T-matrix fingerprinting for hardware validation
+cargo run --example optical_fingerprint_demo --features optical
+
+# Symbolic expressions (symbols, bindings, bundles)
+cargo run --example optical_expressions_demo --features optical
 ```
 
 ## Feature Flags
 
 ```toml
 [dependencies]
-minuet = { version = "0.1", features = ["parallel"] }
+minuet = { version = "0.2", features = ["optical"] }
 ```
 
 | Feature | Description | Dependencies |
@@ -272,7 +382,13 @@ minuet = { version = "0.1", features = ["parallel"] }
 | `serde` | Serialization | `serde`, `bincode` |
 | `persistence` | RocksDB storage | `rocksdb`, `serde` |
 | `async` | Async support | `tokio` |
+| `optical` | Optical backend | `serde`, `ordered-float`, `rand` |
 | `full` | All features | all above |
+
+## Documentation
+
+- [API Reference](docs/API.md) - Complete API documentation
+- [docs.rs](https://docs.rs/minuet) - Generated rustdoc
 
 ## Algebraic Guarantees
 
@@ -300,12 +416,13 @@ The underlying `BindingAlgebra` satisfies:
 | **Semantic Search** | Content-addressable retrieval |
 | **Neurosymbolic AI** | Symbol grounding with compositional generalization |
 | **Robotics** | Motor primitive composition |
+| **Optical Computing** | DMD/MMF-based memory systems |
 
 ## What Minuet Is Not
 
-- ❌ A replacement for vector databases at scale (millions of items)
-- ❌ A general-purpose key-value store
-- ❌ An embedding similarity search engine
+- A replacement for vector databases at scale (millions of items)
+- A general-purpose key-value store
+- An embedding similarity search engine
 
 Minuet excels at **small-to-medium associative memories** where algebraic structure matters.
 
@@ -318,9 +435,12 @@ cargo test
 # Run with all features
 cargo test --all-features
 
+# Run optical tests
+cargo test --features optical
+
 # Run examples
 cargo run --example simple_memory
-cargo run --example compose_pipeline
+cargo run --example optical_memory_demo --features optical
 ```
 
 ## Minimum Supported Rust Version

@@ -1,6 +1,6 @@
 [package]
 name = "minuet"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 # Requires nightly for amari-gpu compatibility
 # rust-version = "nightly"
@@ -14,7 +14,7 @@ categories = ["data-structures", "science", "algorithms"]
 [dependencies]
 # Core holographic types (required)
 # Provides: BindingAlgebra, HolographicMemory, Resonator, algebras
-amari-holographic = { version = "0.12", features = ["serialize"] }
+amari-holographic = { version = "0.15", features = ["serialize"] }
 
 # Utilities
 thiserror = "2.0"
@@ -29,6 +29,11 @@ rayon = { version = "1.10", optional = true }
 # Optional: serialization
 serde = { version = "1.0", features = ["derive"], optional = true }
 bincode = { version = "1.3", optional = true }
+
+# Optional: optical backend
+ordered-float = { version = "4.5", features = ["serde"], optional = true }
+rand = { version = "0.8", optional = true }
+rand_chacha = { version = "0.3", optional = true }
 
 # Optional: persistence
 rocksdb = { version = "0.22", optional = true }
@@ -45,6 +50,7 @@ tempfile = "3.14"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 rand = "0.8"
 rand_chacha = "0.3"
+serde_json = "1.0"
 
 [features]
 default = ["std"]
@@ -53,9 +59,23 @@ parallel = ["rayon", "amari-holographic/parallel"]
 serde = ["dep:serde", "bincode", "amari-holographic/serialize"]
 persistence = ["rocksdb", "serde"]
 async = ["tokio"]
-full = ["parallel", "serde", "persistence", "async"]
+optical = ["serde", "ordered-float", "rand", "rand_chacha"]
+full = ["parallel", "serde", "persistence", "async", "optical"]
 
-# Benchmarks and examples will be added in Phase 6
+# Examples with feature requirements
+[[example]]
+name = "optical_memory_demo"
+required-features = ["optical"]
+
+[[example]]
+name = "optical_fingerprint_demo"
+required-features = ["optical"]
+
+[[example]]
+name = "optical_expressions_demo"
+required-features = ["optical"]
+
+# Benchmarks will be added in Phase 6
 # [[bench]]
 # name = "binding_throughput"
 # harness = false
