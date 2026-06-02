@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Simple memory example demonstrating the basic Minuet API.
 //!
 //! This example shows how to:

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Simple memory - a complete, minimal holographic memory.
 //!
 //! This is the easiest way to get started with Minuet.
@@ -16,12 +18,11 @@ use crate::traits::{Codebook, MemoryStore, RetrievalResult, StoreReceipt};
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use minuet::reference::SimpleMemory;
-/// use amari_holographic::ProductCliffordAlgebra;
-///
-/// type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions
-///
+/// ```rust
+/// # use minuet::prelude::*;
+/// # use minuet::reference::SimpleMemory;
+/// # type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions
+/// # fn main() -> MinuetResult<()> {
 /// let memory = SimpleMemory::<Algebra>::new();
 ///
 /// // Store a relationship
@@ -33,6 +34,8 @@ use crate::traits::{Codebook, MemoryStore, RetrievalResult, StoreReceipt};
 /// let result = memory.retrieve(&paris)?;
 /// let (name, _) = memory.closest(&result.value).unwrap();
 /// assert_eq!(name, "france");
+/// # Ok(())
+/// # }
 /// ```
 pub struct SimpleMemory<A: BindingAlgebra> {
     store: SimpleStore<A>,

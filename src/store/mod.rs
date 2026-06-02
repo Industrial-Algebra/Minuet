@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Memory store implementations.
 //!
 //! This module provides various store implementations for holographic memory:

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Resonator-based retriever - uses cleanup network.
 
 use amari_holographic::{BindingAlgebra, Resonator, ResonatorConfig};
@@ -12,17 +14,19 @@ use crate::traits::{CleanupResult, RetrievalContext, Retriever};
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use minuet::retrieval::ResonatorRetriever;
-/// use minuet::encoding::HashMapCodebook;
-/// use amari_holographic::ProductCliffordAlgebra;
-///
-/// type Algebra = ProductCliffordAlgebra<64>;
-///
+/// ```rust
+/// # use minuet::prelude::*;
+/// # use minuet::retrieval::ResonatorRetriever;
+/// # use minuet::encoding::HashMapCodebook;
+/// # type Algebra = ProductCliffordAlgebra<64>;
+/// # fn main() -> MinuetResult<()> {
 /// let codebook = HashMapCodebook::<Algebra>::new();
 /// // ... populate codebook ...
+/// # let _sym = codebook.symbol("test");
 ///
-/// let retriever = ResonatorRetriever::from_codebook(&codebook);
+/// let retriever = ResonatorRetriever::from_symbols(codebook.all_symbols())?;
+/// # Ok(())
+/// # }
 /// ```
 pub struct ResonatorRetriever<A: BindingAlgebra> {
     resonator: Option<Resonator<A>>,
