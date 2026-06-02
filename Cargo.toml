@@ -1,6 +1,6 @@
 [package]
 name = "minuet"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 # Requires nightly for amari-gpu compatibility
 description = "Holographic memory systems built on amari-holographic — the optical table for holographic computing"

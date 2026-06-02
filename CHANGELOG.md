@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-26
+
 ### Added
 
 - Integration tests: end-to-end pipeline workflow, sharded capacity distribution,
@@ -160,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires Rust nightly (for future `amari-gpu` compatibility)
 - Generic over any `BindingAlgebra` implementation
 
+[0.3.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.3.0
 [0.2.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.2.0
 [0.1.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.1.0
-[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.3.0...HEAD
