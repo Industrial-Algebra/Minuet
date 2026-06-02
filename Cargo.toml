@@ -3,12 +3,11 @@ name = "minuet"
 version = "0.2.0"
 edition = "2021"
 # Requires nightly for amari-gpu compatibility
-# rust-version = "nightly"
-description = "Extended memory systems built on amari-holographic"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/industrial-algebra/minuet"
+description = "Holographic memory systems built on amari-holographic — the optical table for holographic computing"
+license = "AGPL-3.0-only"
+repository = "https://github.com/industrial-algebra/Minuet"
 documentation = "https://docs.rs/minuet"
-keywords = ["holographic", "memory", "vsa", "hyperdimensional", "associative"]
+keywords = ["holographic", "memory", "vsa", "hyperdimensional", "associative", "optical"]
 categories = ["data-structures", "science", "algorithms"]
 
 [dependencies]
@@ -35,7 +34,7 @@ ordered-float = { version = "4.5", features = ["serde"], optional = true }
 rand = { version = "0.8", optional = true }
 rand_chacha = { version = "0.3", optional = true }
 
-# Optional: persistence
+# Optional: persistence (WIP — requires C++ build tools for RocksDB)
 rocksdb = { version = "0.22", optional = true }
 
 # Optional: async
@@ -60,7 +59,8 @@ serde = ["dep:serde", "bincode", "amari-holographic/serialize"]
 persistence = ["rocksdb", "serde"]
 async = ["tokio"]
 optical = ["serde", "ordered-float", "rand", "rand_chacha"]
-full = ["parallel", "serde", "persistence", "async", "optical"]
+# NOTE: persistence is excluded from full because it requires C++ build tools
+full = ["parallel", "serde", "async", "optical"]
 
 # Examples with feature requirements
 [[example]]
@@ -75,10 +75,10 @@ required-features = ["optical"]
 name = "optical_expressions_demo"
 required-features = ["optical"]
 
-# Benchmarks will be added in Phase 6
-# [[bench]]
-# name = "binding_throughput"
-# harness = false
+# Benchmarks
+[[bench]]
+name = "holographic_ops"
+harness = false
 
 [profile.release]
 lto = true

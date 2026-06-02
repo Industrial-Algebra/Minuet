@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Pipeline builder for fluent composition.
 
 use amari_holographic::BindingAlgebra;
@@ -16,16 +18,19 @@ use crate::traits::{
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use minuet::prelude::*;
-/// use minuet::pipeline::PipelineBuilder;
-/// use minuet::store::ShardedStore;
-/// use minuet::retrieval::ResonatorRetriever;
-///
-/// let pipeline = PipelineBuilder::<ProductCliffordAlgebra<64>>::new()
+/// ```rust
+/// # use minuet::prelude::*;
+/// # use minuet::pipeline::PipelineBuilder;
+/// # use minuet::store::ShardedStore;
+/// # use minuet::retrieval::ResonatorRetriever;
+/// # type Algebra = ProductCliffordAlgebra<64>;
+/// # fn main() -> MinuetResult<()> {
+/// let pipeline = PipelineBuilder::<Algebra>::new()
 ///     .with_store(ShardedStore::with_shards(8))
 ///     .with_retriever(ResonatorRetriever::new())
 ///     .build()?;
+/// # Ok(())
+/// # }
 /// ```
 pub struct PipelineBuilder<A: BindingAlgebra> {
     store: Option<Box<dyn MemoryStore<Trace = crate::store::DenseTrace<A>, Algebra = A>>>,
@@ -210,5 +215,81 @@ mod tests {
         // Should fail because threshold is 0
         let result = pipeline.store(&key, &value);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn pipeline_with_sharded_store() {
+        use crate::store::ShardedStore;
+
+        let pipeline = PipelineBuilder::<TestAlgebra>::new()
+            .with_store(ShardedStore::with_shards(4))
+            .build()
+            .unwrap();
+
+        // Store 5 pairs, should distribute across shards
+        for i in 0..5 {
+            let key = pipeline.symbol(&format!("key{i}"));
+            let value = pipeline.symbol(&format!("value{i}"));
+            pipeline.store(&key, &value).unwrap();
+        }
+
+        let info = pipeline.capacity_info();
+        assert_eq!(info.total_items, 5);
+        assert!(info.per_trace.len() > 0);
+    }
+
+    #[test]
+    fn pipeline_symbol_consistency() {
+        let pipeline = PipelineBuilder::<TestAlgebra>::new().build().unwrap();
+
+        let s1 = pipeline.symbol("test");
+        let s2 = pipeline.symbol("test");
+
+        assert!(s1.similarity(&s2) > 0.99);
+    }
+
+    #[test]
+    fn pipeline_capacity_info_reflects_items() {
+        let pipeline = PipelineBuilder::<TestAlgebra>::new().build().unwrap();
+
+        let info = pipeline.capacity_info();
+        assert_eq!(info.total_items, 0);
+        assert!(info.theoretical_capacity > 0);
+
+        let key = pipeline.symbol("a");
+        let value = pipeline.symbol("b");
+        pipeline.store(&key, &value).unwrap();
+
+        let info = pipeline.capacity_info();
+        assert_eq!(info.total_items, 1);
+    }
+
+    #[test]
+    fn pipeline_clear() {
+        let pipeline = PipelineBuilder::<TestAlgebra>::new().build().unwrap();
+
+        let key = pipeline.symbol("key");
+        let value = pipeline.symbol("value");
+        pipeline.store(&key, &value).unwrap();
+
+        assert_eq!(pipeline.capacity_info().total_items, 1);
+
+        pipeline.clear().unwrap();
+        assert_eq!(pipeline.capacity_info().total_items, 0);
+    }
+
+    #[test]
+    fn pipeline_multiple_items() {
+        let pipeline = PipelineBuilder::<TestAlgebra>::new().build().unwrap();
+
+        // Store 3 items
+        #[allow(unused_variables)]
+        for i in 0..3 {
+            let key = TestAlgebra::random_versor(2);
+            let value = TestAlgebra::random_versor(2);
+            pipeline.store(&key, &value).unwrap();
+        }
+
+        assert_eq!(pipeline.capacity_info().total_items, 3);
     }
 }

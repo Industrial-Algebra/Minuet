@@ -4,6 +4,7 @@
 [![Crates.io](https://img.shields.io/crates/v/minuet.svg)](https://crates.io/crates/minuet)
 [![Documentation](https://docs.rs/minuet/badge.svg)](https://docs.rs/minuet)
 [![License](https://img.shields.io/crates/l/minuet.svg)](LICENSE)
+[![IA Conformant](https://img.shields.io/badge/IA-conformant-green.svg)](https://github.com/industrial-algebra)
 
 > "The optical table for holographic computing."
 
@@ -11,12 +12,14 @@
 
 Named after Star Trek's first sentient hologram, Minuet provides memory that participates in cognition rather than merely serving it.
 
-## What's New in 0.2.0
+## What's New in 0.3.0
 
-- **Optical Backend**: Hardware abstraction for optical holographic computing (DMD + MMF systems)
-- **Checkpoint Persistence**: Journal-based state persistence portable across hardware
-- **T-Matrix Fingerprinting**: Fast hardware validation without full recalibration
-- **Symbolic Expressions**: Hardware-independent memory representation (symbols, bindings, bundles)
+- **IA Conformance**: Relicensed to AGPL-3.0 dual-licensed, SPDX headers on all source files, ecosystem toolchain
+- **Code Quality**: Removed dead code, fixed all doc-tests (11 verified), expanded test coverage (57 tests total)
+- **Fixes**: `as_algebra()` stub resolved, clippy clean, persistence feature documented
+- **Benchmarks**: Proper holographic operation benchmarks (store/retrieve/shard/bind)
+- **Integration Tests**: End-to-end pipeline and capacity workflow tests
+- **Documentation**: CONTRIBUTING.md, HANDOFF.md, ROADMAP.md
 
 See the [CHANGELOG](CHANGELOG.md) for full details.
 

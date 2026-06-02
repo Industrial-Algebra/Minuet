@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Symbol codebook implementation.
 //!
 //! Provides consistent symbol-to-vector mapping.
@@ -20,11 +22,9 @@ use crate::traits::Codebook;
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use minuet::encoding::HashMapCodebook;
-/// use amari_holographic::ProductCliffordAlgebra;
-///
-/// type Algebra = ProductCliffordAlgebra<64>;
+/// ```rust
+/// # use minuet::prelude::*;
+/// # type Algebra = ProductCliffordAlgebra<64>;
 /// let codebook = HashMapCodebook::<Algebra>::new();
 ///
 /// let paris = codebook.symbol("paris");

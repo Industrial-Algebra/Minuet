@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! # Minuet: A Toolkit for Holographic Memory Systems
 //!
 //! > "The optical table for holographic computing."
@@ -20,12 +22,12 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,ignore
+//! ```rust
 //! use minuet::prelude::*;
-//! use amari_holographic::ProductCliffordAlgebra;
 //!
 //! type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions
 //!
+//! fn main() -> MinuetResult<()> {
 //! // Create a simple memory
 //! let memory = SimpleMemory::<Algebra>::new();
 //!
@@ -36,6 +38,8 @@
 //! // Store and retrieve
 //! memory.store(&key, &value)?;
 //! let result = memory.retrieve(&key)?;
+//! Ok(())
+//! }
 //! ```
 //!
 //! ## Capacity Model
@@ -130,7 +134,7 @@ pub mod optical;
 /// Prelude module for convenient imports.
 ///
 /// Import everything commonly needed with:
-/// ```rust,ignore
+/// ```rust
 /// use minuet::prelude::*;
 /// ```
 pub mod prelude {

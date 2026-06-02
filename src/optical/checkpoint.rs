@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Checkpointed optical memory with journal-based persistence.
 //!
 //! `CheckpointedOpticalMemory` provides a holographic memory system with:
@@ -41,7 +43,7 @@ pub struct CheckpointConfig {
 impl Default for CheckpointConfig {
     fn default() -> Self {
         Self {
-            interval: Duration::from_secs(300),
+            interval: Duration::from_mins(5),
             max_ops_before_compact: 10_000,
             journal_path: PathBuf::from("memory_journal.bin"),
         }

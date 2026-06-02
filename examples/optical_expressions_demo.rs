@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Symbolic Expressions Demo
 //!
 //! Demonstrates the SymbolicExpression type for building hardware-independent

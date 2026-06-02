@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Core traits for Minuet holographic memory systems.
 //!
 //! These traits provide the abstraction layer between domain applications
@@ -24,17 +26,17 @@ use crate::error::MinuetResult;
 ///
 /// # Example
 ///
-/// ```ignore
-/// use minuet::prelude::*;
-/// use amari_holographic::ProductCliffordAlgebra;
-///
-/// type Algebra = ProductCliffordAlgebra<64>;
+/// ```rust
+/// # use minuet::prelude::*;
+/// # type Algebra = ProductCliffordAlgebra<64>;
+/// # fn main() {
 /// let mut trace = DenseTrace::<Algebra>::new();
 ///
 /// let item = Algebra::random_versor(2);
 /// trace.add(&item, 1.0);
 ///
 /// assert!(trace.similarity(&item) > 0.5);
+/// # }
 /// ```
 pub trait MemoryTrace: Clone + Send + Sync {
     /// The binding algebra this trace uses.
@@ -100,7 +102,7 @@ pub trait MemoryTrace: Clone + Send + Sync {
     fn unbind(&self, query: &Self::Algebra) -> Self::Algebra;
 
     /// Get the raw trace representation.
-    fn as_algebra(&self) -> &Self::Algebra;
+    fn as_algebra(&self) -> Self::Algebra;
 
     // ========== Diagnostics ==========
 
