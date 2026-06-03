@@ -1,19 +1,27 @@
 name: Release
 
+# Trigger on pushes to main that change the version in Cargo.toml.
+# The version bump commit comes from merging the release PR.
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'Cargo.toml'
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -Dwarnings
+  # All working features (excludes persistence — requires C++ toolchain)
+  FEATURES: "parallel,serde,async,optical"
 
 jobs:
-  # Run all checks before publishing
+  # Run all checks before releasing
   check:
-    name: Pre-release Checks
+    name: Pre-release Checks (v${{ steps.version.outputs.version }})
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
@@ -21,59 +29,65 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
 
+      - name: Extract version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: v$VERSION"
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" &>/dev/null; then
+            echo "Release v${{ steps.version.outputs.version }} already exists, skipping."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Check formatting
+        if: steps.check_release.outputs.exists != 'true'
         run: cargo fmt --all -- --check
 
       - name: Run clippy
-        run: cargo clippy --all-features -- -D warnings
+        if: steps.check_release.outputs.exists != 'true'
+        run: cargo clippy --features "$FEATURES" -- -D warnings
 
       - name: Run tests
-        run: cargo test --all-features
+        if: steps.check_release.outputs.exists != 'true'
+        run: cargo test --features "$FEATURES"
 
       - name: Build documentation
-        run: cargo doc --no-deps --all-features
+        if: steps.check_release.outputs.exists != 'true'
+        run: cargo doc --no-deps --features "$FEATURES"
         env:
           RUSTDOCFLAGS: -Dwarnings
 
-      - name: Verify version matches tag
-        run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          CARGO_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "Error: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
-            exit 1
-          fi
-          echo "Version verified: $CARGO_VERSION"
-
-  # Publish to crates.io
-  publish:
-    name: Publish to crates.io
-    needs: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Publish
-        run: cargo publish
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-  # Create GitHub release
+  # Create git tag and GitHub release
   release:
     name: Create GitHub Release
-    needs: publish
+    needs: check
+    if: needs.check.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract changelog for this version
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ needs.check.outputs.version }}" -m "Minuet v${{ needs.check.outputs.version }}"
+          git push origin "v${{ needs.check.outputs.version }}"
+
+      - name: Extract changelog
         id: changelog
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          VERSION="${{ needs.check.outputs.version }}"
           # Extract the section for this version from CHANGELOG.md
           CHANGELOG=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
@@ -83,6 +97,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ needs.check.outputs.version }}
           body: |
             ## What's Changed
 
@@ -92,9 +107,9 @@ jobs:
 
             ```toml
             [dependencies]
-            minuet = "${{ github.ref_name }}"
+            minuet = "${{ needs.check.outputs.version }}"
             ```
 
             See the [documentation](https://docs.rs/minuet) for usage examples.
           draft: false
-          prerelease: ${{ contains(github.ref, '-') }}
+          prerelease: false
