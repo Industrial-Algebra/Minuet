@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Sharded memory store for larger capacity.
 //!
 //! Distributes items across multiple traces via consistent hashing.
@@ -31,7 +33,7 @@ use super::DenseTrace;
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```rust
 /// use minuet::store::ShardedStore;
 /// use amari_holographic::ProductCliffordAlgebra;
 ///

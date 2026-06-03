@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Optical backend for holographic memory with checkpoint-based persistence.
 //!
 //! This module provides an optical computing backend built on `amari-holographic`'s

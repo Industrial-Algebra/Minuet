@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Pipeline composition example.
 //!
 //! This example shows how to compose custom memory pipelines

@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.3.0] - 2026-05-26
+
+### Added
+
+- Integration tests: end-to-end pipeline workflow, sharded capacity distribution,
+  capacity rejection flow, simple memory full workflow, codebook determinism
+- Benchmarks: store throughput at varying load, retrieval latency, sharded scaling,
+  binding/unbinding/similarity operations
+
+### Changed
+
+- **Relicensed** from MIT OR Apache-2.0 to **AGPL-3.0-only** with dual commercial licensing
+- Added `rust-toolchain.toml` (nightly + rustfmt + clippy) per IA ecosystem standards
+- Added SPDX license headers (`Copyright (C) 2026 Industrial Algebra`) to all source files
+- Updated `Cargo.toml`: `license = "AGPL-3.0-only"`, `rust-version = "1.75"`,
+  expanded description
+- Removed `persistence` from `full` feature set (requires C++ build tools for RocksDB)
+- Added IA conformance badge to README
+
+### Fixed
+
+- Fixed `DenseTrace::as_algebra()` — was `unimplemented!()`, now returns cloned trace
+- Fixed clippy warning: `Duration::from_secs(300)` → `Duration::from_mins(5)`
+- Fixed all 11 doc-tests — changed from `rust,ignore` to verified `rust` blocks
+- `as_algebra()` trait signature changed from `&Self::Algebra` to `Self::Algebra`
+  (enables proper implementation behind `RwLock`)
+
+### Removed
+
+- Removed dead code: `retrieval/resonator.rs`, `retrieval/attribution.rs`,
+  `retrieval/temperature.rs` (old `amari_fusion` prototype code, not compiled)
+- Removed dead benchmarks referencing `amari_fusion`
+- Removed misplaced `docs/GHRR-implementation-plan.md` (belongs in amari-holographic)
+
+### Added (Documentation)
+
+- `CONTRIBUTING.md` — CLA requirements, dev setup, PR process
+- `HANDOFF.md` — Agent hand-off document with architecture overview
+- `docs/ROADMAP.md` — Future directions across near/medium/far-term horizons
+
+### Test Coverage
+
+- 41 unit tests (up from 28)
+- 5 integration tests
+- 11 verified doc-tests (up from 0)
+- Total: **57 tests passing**
+
 ## [0.2.0] - 2024-12-29
 
 ### Added
@@ -113,5 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires Rust nightly (for future `amari-gpu` compatibility)
 - Generic over any `BindingAlgebra` implementation
 
+[0.3.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.3.0
 [0.2.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.2.0
 [0.1.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.1.0
+[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.3.0...HEAD
