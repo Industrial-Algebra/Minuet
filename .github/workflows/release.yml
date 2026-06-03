@@ -2,12 +2,14 @@ name: Release
 
 # Trigger on pushes to main that change the version in Cargo.toml.
 # The version bump commit comes from merging the release PR.
+# Also supports manual trigger via workflow_dispatch.
 on:
   push:
     branches:
       - main
     paths:
       - 'Cargo.toml'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
