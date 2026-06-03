@@ -18,7 +18,7 @@ env:
 jobs:
   # Run all checks before releasing
   check:
-    name: Pre-release Checks (v${{ steps.version.outputs.version }})
+    name: Pre-release Checks
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
