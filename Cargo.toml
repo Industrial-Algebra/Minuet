@@ -7,7 +7,7 @@ description = "Holographic memory systems built on amari-holographic — the opt
 license = "AGPL-3.0-only"
 repository = "https://github.com/industrial-algebra/Minuet"
 documentation = "https://docs.rs/minuet"
-keywords = ["holographic", "memory", "vsa", "hyperdimensional", "associative", "optical"]
+keywords = ["holographic", "memory", "hyperdimensional", "associative", "optical"]
 categories = ["data-structures", "science", "algorithms"]
 
 [dependencies]
