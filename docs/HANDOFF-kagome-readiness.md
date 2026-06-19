@@ -1,17 +1,17 @@
 # Minuet — Agent Hand-Off: Kagome Readiness Sprint
 
 **Project:** Minuet — holographic memory toolkit built on amari-holographic
-**Branch:** `docs/kagome-readiness-handoff` (off `develop`)
-**Date:** 2026-06-19
+**Branch:** `docs/kagome-readiness-handoff` (rebased onto `main` — the AGPL v0.3.0 base)
+**Date:** 2026-06-19 (revised after branch-topology verification)
+**Status:** Decisions locked (§10). Ready to execute workstream 0.
 **Purpose:** Prepare Minuet for integration with [Kagome](../Kagome) (the microwave-optical
 back-end) — restore capability lost in the v0.3.0 tech-debt release, fix the amari
 dependency seam, and close the gaps a physical back-end exposes.
-**Predecessor:** [`HANDOFF.md`](../HANDOFF.md) (v0.3.0 relicense/tech-debt handoff, on
-`feature/relicense-ia-conformance-0.3.0`).
+**Predecessor:** [`HANDOFF.md`](../HANDOFF.md) (v0.3.0 relicense/tech-debt handoff, now on `main`).
 
-> **Read first.** This handoff assumes the v0.3.0 relicense branch exists but is **not
-> merged** to `develop`/`main` (see §4). Decide the sequencing in §6 before starting any
-> code work — it determines your base branch.
+> **Read first.** The v0.3.0 relicense **is on `main`** (PR #5, merged before gitflow was
+> clamped down) — `main` is the AGPL/conformance base. Only `develop` is stale and needs
+> syncing from `main` (§4). All four open decisions are resolved (§10).
 
 ---
 
@@ -79,17 +79,25 @@ delegates to it. So:
 (`use amari_fusion::TropicalDualClifford;`). So the restore target is amari-fusion — the
 RABBIT_HOLE report's "moved into amari-holographic proper" was only half-true.
 
-### Decision: restore strategy (⚠ pick before coding)
+### Decision: restore strategy — DECIDED (option B + experimental TDC path)
 
-| Option | What | Trade |
-|--------|------|-------|
-| **A — Verbatim restore** | Re-add `amari-fusion` dep, revive the 3 files as-is | Re-introduces a parallel `TropicalDualClifford` code path divergent from the `ProductCliffordAlgebra` store; fastest, but doubles the algebra surface and the divergence that caused the "dead code" call in the first place. |
-| **B — Re-express generically (recommended)** | Restore `temperature.rs` near-verbatim (it's pure Minuet, no fusion import). Re-express `Attribution` over `A: BindingAlgebra`. Replace the tropical-dual resonator with amari-holographic's generic `Resonator<A>` (already in `ResonatorRetriever`). Keep `amari-fusion` as an *optional* path for tropical-dual semantics, not the default. | More work upfront; one algebra path; aligns with amari-holographic's direction; attribution/temperature become substrate-agnostic (good for Kagome). |
-| **C — Defer attribution/temperature** | Restore only what Kagome's first milestone needs (resonator cleanup is already generic). | Least work; loses attribution/temperature longer; those are exactly the retrieval-quality features a noisy physical backend needs. |
+**Chosen: B — generic re-expression over `BindingAlgebra`, plus an optional experimental
+`TropicalDualClifford` fusion path.** Specifically:
 
-**Recommendation: B.** A noisy microwave backend makes annealed cleanup and attribution
-*more* valuable, not less — they directly attack the phase-noise error budget. And Kagome
-should not have to take a tropical-dual dependency to get cleanup.
+- **`temperature.rs`** — restore near-verbatim (pure Minuet, no fusion import).
+- **`Attribution`** — re-express over `A: BindingAlgebra` (not `TropicalDualClifford`).
+- **Resonator cleanup** — use amari-holographic's generic `Resonator<A>` (already in
+  `ResonatorRetriever`) as the default path.
+- **Experimental TDC path** — behind an *additive* feature (e.g. `tropical-dual`, pulling
+  `amari-fusion`), restore the `TropicalDualClifford`-specific resonator API as an opt-in.
+  Additive only — never removes the generic path — per IA feature conventions.
+
+**Rationale.** One default algebra path (`BindingAlgebra`) keeps store and retrievers
+coherent and substrate-agnostic (what Kagome needs), while the experimental feature
+preserves the tropical-dual semantics that motivated the original code. A noisy microwave
+backend makes annealed cleanup and attribution *more* valuable, not less — they directly
+attack the phase-noise error budget — and Kagome should not have to take a tropical-dual
+dependency to get cleanup.
 
 ---
 
@@ -118,16 +126,13 @@ Verified present in amari-holographic **0.23.0** but not in 0.15:
 - The `MemoryBackend`-adjacent surface described in
   [`IA-documents/Minuet/Physical-backend-implementation-pathways.md`](../IA-documents/Minuet/Physical-backend-implementation-pathways.md) §13.
 
-### Decision: how to close the seam (⚠ pick before coding)
+### Decision: how to close the seam — DECIDED (option A)
 
-| Option | What | Trade |
-|--------|------|-------|
-| **A — Bump Minuet's floor to `^0.23` (recommended)** | One-line Cargo.toml change + adapt to any 0.15→0.23 API drift | Reaches the mature algebra ecosystem-wide; unblocks Kagome directly; exposes any drift Minuet must absorb. |
-| **B — Leave Minuet at 0.15; Kagome takes amari-holographic 0.23 as a direct dep** | No Minuet change | Kagome reaches the algebra, but Minuet stays stale and the ecosystem stays forked on amari versions. |
-
-**Recommendation: A.** The floor bump is the single highest-leverage change in this sprint.
-Do it as its **own PR** first (before the fusion restore), because both the restore and
-Kagome's port depend on it and it isolates API-drift breakage.
+**Chosen: A — bump `amari-holographic` to `"0.23"` (the 0.23.x line).** This is the
+single highest-leverage change in the sprint and the first code PR (after the `develop`
+sync, §4/§8). Both the fusion restore and Kagome's port depend on it; doing it first
+isolates 0.15→0.23 API-drift breakage against the 69-test suite (see "Audit the drift"
+below).
 
 ### Audit the drift
 
@@ -139,31 +144,41 @@ areas that gained the generic `Resonator<A>`). The 69-test suite is the safety n
 
 ---
 
-## 4. Issue 3 — The stranded v0.3.0 branch
+## 4. Issue 3 — Branch topology (the relicense is on `main`; `develop` is stale)
 
-The relicense + IA-conformance + tech-debt work is on
-`feature/relicense-ia-conformance-0.3.0`, **not merged** to `develop` or `main`.
+> Corrected after verifying the actual branch state. The first draft of this handoff
+> assumed the relicense was stranded; it is not.
 
-- `develop` (this branch's base) is still **MIT OR Apache-2.0**, pre-conformance, and
-  *still contains the retrieval files* (the deletion is only on the v0.3.0 branch).
-- The v0.3.0 branch has: AGPL-3.0 + LICENSE-COMMERCIAL, SPDX headers, `CONTRIBUTING.md`,
-  `rust-toolchain.toml`, `HANDOFF.md`, `docs/ROADMAP.md`, the new `holographic_ops` bench,
-  `tests/integration/end_to_end.rs`, and the retrieval deletions.
+**The relicense is on `main`.** PR #5 (`4a40d9a` "Relicense to AGPL-3.0 & IA conformance
+(v0.3.0)") was merged **directly to `main`** by an agent before gitflow was clamped down,
+then released (`5e0068d`, tag `v0.3.0`, on crates.io). Verified on `origin/main`:
 
-**Why it matters for Kagome:** Kagome is AGPL-3.0-only. For the integration to be
-licensing-coherent, Minuet needs to be on the AGPL track too. Merging the v0.3.0 branch
-(even if the retrieval deletion is then partially reverted per §2) is a prerequisite.
+- `LICENSE` = AGPL (header "Minuet — Holographic Memory Systems"), `LICENSE-COMMERCIAL`
+  present, `LICENSE-MIT` removed; SPDX headers on `src/lib.rs`; `Cargo.toml` version 0.3.0.
+- The **retrieval-file deletion is on `main`** (only `direct.rs`, `mod.rs`,
+  `resonator_retriever.rs` remain) — confirming the amari-fusion removal landed.
+- All the v0.3.0 additions are on `main`: `HANDOFF.md`, `CONTRIBUTING.md`, `docs/ROADMAP.md`,
+  `rust-toolchain.toml`, `benches/holographic_ops.rs`, `tests/integration/end_to_end.rs`.
 
-### Decision: base branch sequencing (⚠ pick first)
+**The stranded branch is redundant.** `feature/relicense-ia-conformance-0.3.0` (`756dab0`)
+adds **nothing** not already on `main` (`git diff --diff-filter=A` is empty). It's an
+abandoned duplicate of the work that landed via PR #5. **Safe to delete.**
 
-| Option | Sequence |
-|--------|----------|
-| **A (recommended)** | Merge `feature/relicense-ia-conformance-0.3.0` → `develop` first (re-establish AGPL/conformance baseline), then branch the readiness sprint off that, reverting/re-expressing the retrieval deletions per §2. |
-| **B** | Branch the readiness sprint off current `develop` (still MIT/Apache, has the retrieval files), carry the relicense forward together. Risks conflicting with the stranded branch. |
+**`develop` is stale.** It is **behind `main` by 7 commits** (the entire v0.3.0 line) and
+**ahead by 1** (`5aade1e`, a CI auto-project-routing workflow that `main` doesn't have).
+So `develop` is still effectively pre-relicense (MIT/Apache, still has the retrieval files)
+— the opposite of what the first draft assumed.
 
-**Recommendation: A.** Land the relicense as-is first; it's been finished and stranded.
-Then this sprint starts from a clean AGPL/conformant base and the only contested change
-(the retrieval deletion) is a localized revert/re-express, not a license entanglement.
+### Decision: base sequencing — DECIDED
+
+**Sync `develop` from `main`** (merge `main` → `develop`), preserving `5aade1e`; then delete
+the redundant `feature/relicense-ia-conformance-0.3.0`. This is workstream 0 (§8) and the
+base for every sprint PR. After the sync, `develop` is the AGPL/conformance baseline and
+this handoff branch (rebased onto `main`) targets it cleanly.
+
+**Why it matters for Kagome:** Kagome is AGPL-3.0-only; `main` already provides the
+licensing-coherent base. The sync just gets `develop` onto that base so the readiness PRs
+follow normal gitflow (`feature/*` → `develop`).
 
 ---
 
@@ -194,9 +209,9 @@ fill compute later" choice (per `HANDOFF.md`), not a bug.
 **For Kagome readiness**, implement the compute path using `OpticalFieldAlgebra` (reachable
 once §3 lands): bind → bundle into the memory trace → display+measure for cleanup. This is
 **shared work with Kagome**: Kagome's `MicrowaveField` is the port of `OpticalRotorField`,
-so the bind/bundle logic written here is reused there. Recommend implementing behind the
-existing `optical` feature with a software (`MockOpticalHardware`) reference, so it's
-testable without physical hardware.
+so the bind/bundle logic written here is reused there. **DECIDED:** implement behind the
+existing `optical` feature with a software (`MockOpticalHardware`) reference, **in
+coordination with Kagome**, so it's testable without physical hardware.
 
 ---
 
@@ -242,11 +257,12 @@ Ordered by dependency; each item is a PR against `develop` (after §4 sequencing
 
 | # | Workstream | Depends on | Approx scope |
 |---|-----------|------------|--------------|
-| 0 | **Merge v0.3.0 relicense branch → develop** (§4-A) | — | merge + resolve; re-establish AGPL/conformance baseline |
+| 0 | **Sync `develop` ← `main` + delete redundant stranded branch** (§4) | — | merge main→develop (preserve `5aade1e`); delete `feature/relicense-ia-conformance-0.3.0`; re-establish AGPL/conformance baseline on develop |
 | 1 | **Bump `amari-holographic` floor `^0.15` → `^0.23`** (§3-A) | 0 | Cargo.toml + adapt to API drift; 69-test safety net |
 | 2 | **Restore `temperature.rs`** (§2-B) | 0 | near-verbatim; pure Minuet, no new dep |
 | 3 | **Re-express `Attribution` over `BindingAlgebra`** (§2-B) | 1 | port `attribution.rs` from `TropicalDualClifford` to generic `A` |
 | 4 | **Wire annealed temperature into `ResonatorRetriever`** (§2-B) | 2,3 | close the loop: annealed cleanup as a retriever option |
+| 4b | **Experimental `tropical-dual` feature** (§2) | 1,4 | additive feature pulling `amari-fusion`; restore the `TropicalDualClifford` resonator API as opt-in; default path unchanged |
 | 5 | **Implement `optical_store` compute path** (§5) | 1 | bind+bundle via `OpticalFieldAlgebra`; Mock-hardware reference impl; coordinate with Kagome |
 | 6 | **CI + doc hygiene pass** (§6) | 0 | fmt/clippy/test/doc matrix; un-ignore doc-tests where possible |
 
@@ -257,7 +273,7 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
 ## 9. Verification checklist (before declaring the sprint done)
 
-- [ ] `develop` is AGPL-3.0-only with SPDX headers on all `.rs` files (§4).
+- [ ] `develop` synced from `main`: AGPL-3.0-only, SPDX headers on all `.rs` files, redundant stranded branch deleted (§4).
 - [ ] `amari-holographic` resolves to 0.23.x in the lockfile (§3).
 - [ ] `cargo test --all-features` green; test count ≥ 69 and *increased* by restored
       retrieval coverage (§2).
@@ -270,14 +286,16 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
 ---
 
-## 10. Open decisions (consolidated)
+## 10. Decisions (locked)
 
-1. **Base sequencing (§4):** merge v0.3.0 relicense branch to `develop` first? *(rec: yes)*
-2. **amari seam (§3):** bump floor to `^0.23`? *(rec: yes, as first PR)*
-3. **Fusion restore strategy (§2):** verbatim / generic re-express / defer? *(rec: generic
-   re-express — option B)*
-4. **`optical_store` (§5):** implement now behind `optical` feature with mock hardware?
-   *(rec: yes, coordinate with Kagome)*
+1. **Base sequencing (§4):** sync `develop` ← `main`; delete redundant stranded branch. ✅
+2. **amari seam (§3):** bump `amari-holographic` to `"0.23"` as the first code PR. ✅
+3. **Fusion restore (§2):** generic re-expression over `BindingAlgebra` (option B), **plus**
+   an optional experimental `tropical-dual` feature restoring the `TropicalDualClifford`
+   fusion API as an additive opt-in. ✅
+4. **`optical_store` (§5):** implement behind the `optical` feature with a
+   `MockOpticalHardware` reference impl, **in coordination with Kagome** (whose
+   `MicrowaveField` ports `OpticalRotorField`). ✅
 
 ---
 
@@ -291,4 +309,4 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
   — §13 (unified backend abstraction), §15.1 (microwave PoC roadmap).
 - Amari-integration analysis (the 5 opportunities, verified against amari 0.23.0):
   [`../IA-documents/RESEARCH_REPORTS_archive/AMARI_INTEGRATION_MINUET_2026-02-27_20260227_150000.md`](../IA-documents/RESEARCH_REPORTS_archive/AMARI_INTEGRATION_MINUET_2026-02-27_20260227_150000.md).
-- v0.3.0 handoff (predecessor): `HANDOFF.md` on `feature/relicense-ia-conformance-0.3.0`.
+- v0.3.0 handoff (predecessor): [`../HANDOFF.md`](../HANDOFF.md) (now on `main`).
