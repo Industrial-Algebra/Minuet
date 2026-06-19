@@ -38,6 +38,28 @@ dependency seam, and close the gaps a physical back-end exposes.
 - **amari floor intentionally untouched** (`amari-holographic = "0.15"`, lockfile `0.15.1`) —
   the bump is WS 1.
 
+### WS 1 — DONE (2026-06-19) + §3 premise corrected
+
+- **amari floor bumped `^0.15` → `^0.23`** on `feature/amari-floor-0.23` (commit `0e8fce5`,
+  **PR #10** against `develop`). Zero source changes; resolves `amari-holographic 0.23.0` +
+  `amari-core 0.23.0`. Green: 82 lib + 11 integration tests, fmt/clippy/doc clean across
+  the full feature matrix.
+- **rand skew materialized as a split tree** (Minuet `rand` 0.8 for `optical` / amari
+  `rand` 0.10) that compiles cleanly — no rand types cross the boundary. Consolidation
+  deferred.
+- **§3 premise corrected (verified by byte-diffing cached 0.15.1 vs 0.23.0 sources):** the
+  optical public surface (`OpticalRotorField`, `OpticalFieldAlgebra`, `GeometricLeeEncoder`,
+  `LeeEncoderConfig`, `BinaryHologram`, `TropicalOpticalAlgebra` w/ `attractor_step`/
+  `attractor_converge`), `Resonator<A: BindingAlgebra>`, and `ResonatorConfig` are
+  **byte-identical 0.15.1↔0.23.0**. amari-holographic itself changed only 2 files
+  (`optical/lee_encoder.rs`, `optical/rotor_field.rs`), both same LOC. The bump did **not**
+  "unlock" those symbols — they were reachable all along. Its real payload is the
+  transitive **amari-core 0.15→0.23** upgrade (6032→8125 LOC, 14→21 files, **7 new modules**).
+- **Consequence for later workstreams:** WS 3 (`Attribution` over `BindingAlgebra`/
+  `Resonator<A>`) and WS 5 (`optical_store` via `OpticalFieldAlgebra`) were **never actually
+  blocked by the 0.15 floor** — the APIs were identical at 0.15.1. Their "depends on WS 1" in
+  §8 is sequencing hygiene, not a hard floor dependency.
+
 ### Correction recorded (local vs canonical main)
 
 The first draft of §0 treated **local `main` (`bcbba1b`)** as "main". The canonical
@@ -92,9 +114,11 @@ Three things in current Minuet block or degrade that integration:
 1. **Lost retrieval capability.** The v0.3.0 tech-debt release deleted the tropical-dual
    resonator, attribution tracking, and temperature-annealed cleanup — capability Kagome's
    resonator-cleanup operation depends on (§2).
-2. **A stale amari seam.** Minuet pins `amari-holographic` at `^0.15`; the mature
-   optical-field algebra Kagome ports from is at `0.23.0` and unreachable through Minuet's
-   floor (§3).
+2. **A stale amari seam.** Minuet pins `amari-holographic` at `^0.15`, eight releases
+   behind the maintained `0.23` line (and the transitive `amari-core` upgrade that line
+   carries). **Note (post-WS-1):** the optical-field algebra Kagome ports from is *not*
+   gated by this floor — it was reachable at `0.15.1` already (§0/§3) — but staying eight
+   releases behind is still tech debt worth closing (§3).
 3. **A stubbed optical compute path.** `CheckpointedOpticalMemory::optical_store` is a
    deliberate no-op — exactly the compute core a physical backend accelerates (§5).
 
@@ -178,40 +202,57 @@ amari-holographic = { version = "0.15", features = ["serialize"] }
 (0.15 → 0.23). Minuet (and therefore Kagome, via its `minuet` dep) is locked to 0.15.x
 (Kagome's `Cargo.lock` shows `amari-holographic 0.15.1`).
 
-### What's unreachable through Minuet's floor
+### What's unreachable through Minuet's floor — CORRECTED: nothing on the surface
 
-Verified present in amari-holographic **0.23.0** but not in 0.15:
+> **Original premise withdrawn (2026-06-19, after WS 1).** The first draft asserted the
+> optical-field algebra symbols below were present at 0.23.0 but absent at 0.15. A
+> byte-level diff of the cached 0.15.1 vs 0.23.0 sources disproves this: **they are
+> byte-identical.** The bump still stands (see §0 + §3 decision), but not for the reason
+> given here.
 
-- `amari-holographic::optical` — `OpticalRotorField`, `OpticalFieldAlgebra`
-  (`bind`/`bundle`/`similarity`/`unbind`/`add_phase`), `GeometricLeeEncoder` +
-  `LeeEncoderConfig`, `BinaryHologram` — **the reference algebra Kagome ports from**.
-- `TropicalOpticalAlgebra` with `attractor_step` / `attractor_converge` — the resonator
-  cleanup primitive in tropical-dual flavour.
-- The `MemoryBackend`-adjacent surface described in
-  [`IA-documents/Minuet/Physical-backend-implementation-pathways.md`](../IA-documents/Minuet/Physical-backend-implementation-pathways.md) §13.
+The symbols the earlier draft listed — `amari-holographic::optical` (`OpticalRotorField`,
+`OpticalFieldAlgebra` `bind`/`bundle`/`similarity`/`unbind`/`add_phase`, `GeometricLeeEncoder`
++ `LeeEncoderConfig`, `BinaryHologram`), `TropicalOpticalAlgebra` with `attractor_step`/
+`attractor_converge`, and `Resonator<A: BindingAlgebra>` — are all **already present and
+identical in amari-holographic 0.15.1**. The 0.15.1→0.23.0 delta is **2 in-place edits**
+(`optical/lee_encoder.rs`, `optical/rotor_field.rs`, same LOC) — no new public surface, no
+`Resonator`/retrieval drift. **Kagome was never actually locked out of the optical-field
+algebra by Minuet's floor.**
+
+What the bump *does* buy (the real reason to do it): the transitive **`amari-core`
+0.15→0.23** upgrade — 6032→8125 LOC, 7 new core modules — plus currency (no longer 8
+releases behind the maintained line). The `MemoryBackend`-adjacent surface in
+[`IA-documents/Minuet/Physical-backend-implementation-pathways.md`](../IA-documents/Minuet/Physical-backend-implementation-pathways.md)
+§13 should be re-checked against amari-core 0.23, where most movement occurred.
 
 ### Decision: how to close the seam — DECIDED (option A)
 
-**Chosen: A — bump `amari-holographic` to `"0.23"` (the 0.23.x line).** This is the
-single highest-leverage change in the sprint and the first code PR (after the `develop`
-sync, §4/§8). Both the fusion restore and Kagome's port depend on it; doing it first
-isolates 0.15→0.23 API-drift breakage against the existing test suite (82 tests under CI's
-working-features set; see §0 and "Audit the drift" below).
+**Chosen: A — bump `amari-holographic` to `"0.23"` (the 0.23.x line).** ✅ **DONE (WS 1,
+PR #10).** The decision stands, but the rationale is revised: the bump was pitched as
+"highest-leverage" on the theory that it unlocks the optical-field algebra and de-risks
+Kagome's port. That theory was **disproven by the WS 1 drift audit** (§0) — nothing on
+amari-holographic's surface was unlocked. The bump's actual leverage is the **transitive
+`amari-core` 0.15→0.23 upgrade** (7 new modules) and currency. It remains the right call
+(zero source changes, all green) and a sensible sequencing prerequisite; it is just not the
+capability-unblock the first draft claimed.
 
-### Audit the drift
+### Audit the drift — RESULT (post-WS-1)
 
-`amari-holographic` 0.23.0 is confirmed published (crates.io, 2026-05-24, not yanked), so
-this target is real. Before merging the bump, run a focused diff of the symbols Minuet uses
-(`BindingAlgebra`, `ProductCliffordAlgebra`, `Resonator`, `ResonatorConfig`,
-`HolographicMemory`, `AlgebraConfig`, `RetrievalResult`) across 0.15 → 0.23. Expect
-renames/signature changes in the `Resonator` and retrieval surface (those are exactly the
-areas that gained the generic `Resonator<A>`).
+`amari-holographic` 0.23.0 was confirmed published (crates.io, 2026-05-24, not yanked) and
+the bump landed clean. **The predicted drift did not occur.** Diffing the cached 0.15.1 vs
+0.23.0 sources across every symbol Minuet uses (`BindingAlgebra`, `ProductCliffordAlgebra`,
+`Resonator`, `ResonatorConfig`, `HolographicMemory`, `AlgebraConfig`, `RetrievalResult`,
+plus the `optical::*` set): **all byte-identical.** The `Resonator<A: BindingAlgebra>` the
+earlier draft called newly-generic has been at `src/memory/resonator.rs:75` since 0.15.1.
+Only 2 files changed (lee_encoder, rotor_field), in-place.
 
-**Known concrete drift (verified from the 0.23.0 manifest):** amari 0.23 depends on
-`rand` / `rand_chacha` **0.10**, while Minuet pins `rand` **0.8** — budget for a split rand
-tree or for bumping Minuet to rand 0.10 (touches `MockOpticalHardware` and any RNG-using
-code). The existing test suite (82 tests under CI's working-features set, 41 minimal — §0)
-is the safety net.
+**rand skew — resolved as a split tree.** amari 0.23 depends on `rand`/`rand_chacha` **0.10**,
+Minuet pins `rand` **0.8**. This compiled cleanly with **no source changes** — Minuet's
+`optical` rand usage never exchanges rand types with amari, so a split rand tree (0.8 +
+0.10) coexists without conflict. Consolidating to a single rand version is optional future
+cleanup (would touch `MockOpticalHardware` + RNG-seeding code), deliberately **not** done in
+WS 1. The 82-test (working-features) / 41-test (minimal) suite stayed green throughout — it
+was the safety net and it held.
 
 ---
 
@@ -277,8 +318,10 @@ This is the **compute accelerator path** — exactly what a physical backend (op
 microwave) is for. It was correctly characterized as a deliberate "ship persistence first,
 fill compute later" choice (per `HANDOFF.md`), not a bug.
 
-**For Kagome readiness**, implement the compute path using `OpticalFieldAlgebra` (reachable
-once §3 lands): bind → bundle into the memory trace → display+measure for cleanup. This is
+**For Kagome readiness**, implement the compute path using `OpticalFieldAlgebra`
+(**already reachable** — it was present at amari-holographic 0.15.1; the WS 1 bump added
+currency, not capability, see §0): bind → bundle into the memory trace → display+measure
+for cleanup. This is
 **shared work with Kagome**: Kagome's `MicrowaveField` is the port of `OpticalRotorField`,
 so the bind/bundle logic written here is reused there. **DECIDED:** implement behind the
 existing `optical` feature with a software (`MockOpticalHardware`) reference, **in
@@ -349,6 +392,12 @@ the synced AGPL/conformance base; this handoff branch is rebased onto `develop` 
 Items 1–4 are the "amari seam + fusion restore" core. Item 5 is the Kagome-shared compute
 path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
+> **Sequencing caveat (post-WS-1 audit):** the "depends on WS 1" edges on rows 3 and 5 are
+> soft, not hard. The APIs WS 3 (`Resonator<A: BindingAlgebra>`) and WS 5
+> (`OpticalFieldAlgebra`) need were identical at amari-holographic 0.15.1 — they were never
+> floor-blocked (§0). Keeping WS 1 first is good hygiene (one diff base), but 3/5 could in
+> principle have proceeded on 0.15.1.
+
 ---
 
 ## 9. Verification checklist (before declaring the sprint done)
@@ -356,7 +405,8 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 - [x] `develop` synced from `main`: AGPL-3.0-only, SPDX header on `src/lib.rs`, redundant
       stranded branch deleted (§4). `develop`=`5665040` ≡ `origin/main`; verified green
       (82+11 tests, fmt/clippy clean).
-- [ ] `amari-holographic` resolves to 0.23.x in the lockfile (§3).
+- [~] `amari-holographic` resolves to 0.23.x in the lockfile (§3) — **done in PR #10
+      (WS 1), pending merge to `develop`.**
 - [ ] `cargo test --all-features` green; test count ≥ 82 (current CI working-features
       baseline; 41 minimal — §0) and *increased* by restored retrieval coverage (§2).
 - [ ] `Attribution` and `TemperatureSchedule` are reachable from the public API and have
@@ -374,6 +424,8 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
 1. **Base sequencing (§4):** sync `develop` ← `main`; delete redundant stranded branch. ✅
 2. **amari seam (§3):** bump `amari-holographic` to `"0.23"` as the first code PR. ✅
+   *(Decision holds; rationale revised — see §0/§3: the bump brings the `amari-core`
+   transitive upgrade + currency, not the optical-symbol "unlock" the draft claimed.)*
 3. **Fusion restore (§2):** generic re-expression over `BindingAlgebra` (option B), **plus**
    an optional experimental `tropical-dual` feature restoring the `TropicalDualClifford`
    fusion API as an additive opt-in. ✅
