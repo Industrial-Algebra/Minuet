@@ -332,9 +332,8 @@ So the implementing session knows the downstream contract:
 
 ## 8. Recommended sprint plan (workstream sequencing)
 
-Ordered by dependency; each item is a PR against `develop`. **Prerequisite:** WS 0 must
-sync `develop` ← `main` first — this handoff branch currently sits on `main`, not
-`develop` (see §0).
+Ordered by dependency; each item is a PR against `develop`. **WS 0 done:** `develop` is
+the synced AGPL/conformance base; this handoff branch is rebased onto `develop` (§0).
 
 | # | Workstream | Depends on | Approx scope |
 |---|-----------|------------|--------------|
@@ -345,7 +344,7 @@ sync `develop` ← `main` first — this handoff branch currently sits on `main`
 | 4 | **Wire annealed temperature into `ResonatorRetriever`** (§2-B) | 2,3 | close the loop: annealed cleanup as a retriever option |
 | 4b | **Experimental `tropical-dual` feature** (§2) | 1,4 | additive feature pulling `amari-fusion`; restore the `TropicalDualClifford` resonator API as opt-in; default path unchanged |
 | 5 | **Implement `optical_store` compute path** (§5) | 1 | bind+bundle via `OpticalFieldAlgebra`; Mock-hardware reference impl; coordinate with Kagome |
-| 6 | **CI + doc hygiene pass** (§6) | 0 | CI already strong (§6) — add `optical` matrix leg, document `persistence` C++ need in README; un-ignore doc-tests where the amari bump allows |
+| 6 | **CI + doc hygiene pass + branch cleanup** (§6) | 0 | CI already strong (§6) — add `optical` matrix leg, document `persistence` C++ need in README, un-ignore doc-tests where the amari bump allows; **staleness-check `origin/feature/optical-backend` and `origin/refactor/toolkit-conversion`** (survived WS 0 unassessed) — delete if redundant, recover-via-SHA if not |
 
 Items 1–4 are the "amari seam + fusion restore" core. Item 5 is the Kagome-shared compute
 path. Items 0 and 6 are housekeeping that should bookend the sprint.
