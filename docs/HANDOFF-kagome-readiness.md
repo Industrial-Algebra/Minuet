@@ -2,8 +2,8 @@
 
 **Project:** Minuet — holographic memory toolkit built on amari-holographic
 **Branch:** `docs/kagome-readiness-handoff` (rebased onto `main` — the AGPL v0.3.0 base)
-**Date:** 2026-06-19 (revised after branch-topology verification)
-**Status:** Decisions locked (§10). Ready to execute workstream 0.
+**Date:** 2026-06-19 (revised after branch-topology verification; repo re-verified same day — see §0)
+**Status:** Decisions locked (§10). Repo re-verified 2026-06-19 (§0). Next action = WS 0 (sync `develop` ← `main`); unstarted.
 **Purpose:** Prepare Minuet for integration with [Kagome](../Kagome) (the microwave-optical
 back-end) — restore capability lost in the v0.3.0 tech-debt release, fix the amari
 dependency seam, and close the gaps a physical back-end exposes.
@@ -12,6 +12,47 @@ dependency seam, and close the gaps a physical back-end exposes.
 > **Read first.** The v0.3.0 relicense **is on `main`** (PR #5, merged before gitflow was
 > clamped down) — `main` is the AGPL/conformance base. Only `develop` is stale and needs
 > syncing from `main` (§4). All four open decisions are resolved (§10).
+
+---
+
+## 0. Verified state snapshot (2026-06-19, re-verified)
+
+Re-derived against the live repo so the next session doesn't re-audit. Every claim below
+was checked directly (not carried from prior drafts).
+
+- **This branch** (`docs/kagome-readiness-handoff`) is rebased onto `main` (verified:
+  `main` is an ancestor of HEAD), **not** onto `develop`. It sits 3 commits past `main`:
+  the CI-workflow commit, the handoff (`d57cc0c`), and the topology correction (`2f9f9e5`).
+- **`develop` is stale** — 7 behind / 1 ahead of `main`. The 1-ahead commit is `5aade1e`
+  (CI auto-project workflow), whose identical content is already on `main` as `18b3320`,
+  so `main` → `develop` should merge cleanly. `develop`'s `LICENSE` is still the pre-relicense
+  (empty-header) file; `main`'s is AGPL. ⇒ **Workstream 0 (sync) is unstarted and is the
+  active next step.** No PRs are open.
+- **Stranded branch** `feature/relicense-ia-conformance-0.3.0` is confirmed redundant
+  (`git diff --diff-filter=A main..origin/feature/relicense-ia-conformance-0.3.0` is empty).
+  Safe to delete in WS 0.
+- **amari floor** still `amari-holographic = "0.15"` (Cargo.toml:16); lockfile pins `0.15.1`.
+  **WS 1 (bump) unstarted.**
+- **`amari-holographic` 0.23.0 is published** (crates.io, 2026-05-24; not yanked) — the
+  WS 1 target is real.
+- **Test baseline (verified by running, not estimated):**
+  - `cargo test --features "parallel,serde,async,optical"` (CI's `WORKING_FEATURES`):
+    **82 lib + 11 integration tests pass (8 of the integration tests are `ignore`d).**
+  - minimal / `--no-default-features`: **41 lib tests pass.**
+  - The earlier "69-test suite" figure in this doc was inaccurate; use the numbers above.
+- **CI is already strong** (`.github/workflows/ci.yml`): `RUSTFLAGS=-Dwarnings` globally;
+  jobs = check / test / fmt (`--check`) / clippy (`-D warnings`) / docs
+  (`RUSTDOCFLAGS=-Dwarnings`) / examples / minimal-features / feature-combo matrix; nightly
+  via `dtolnay/rust-toolchain` (honors `rust-toolchain.toml`). ⇒ **§6 / WS 6 is largely
+  pre-satisfied;** remaining nits noted in §6.
+- **Concrete drift to expect in WS 1:** amari 0.23 depends on **`rand` / `rand_chacha`
+  0.10**, while Minuet pins **`rand` 0.8**. Plan for either a split rand tree or bumping
+  Minuet's `rand` to 0.10 (affects `MockOpticalHardware` and RNG-using code).
+
+> **PR targeting note.** IA gitflow is `feature/*` → `develop`. Because this handoff
+> branch currently sits on `main`, the very first action is WS 0 (sync `develop` ← `main`);
+> only then do the `feature/*` readiness PRs — and the merge of this doc into `develop` —
+> target a non-stale `develop`.
 
 ---
 
@@ -131,16 +172,23 @@ Verified present in amari-holographic **0.23.0** but not in 0.15:
 **Chosen: A — bump `amari-holographic` to `"0.23"` (the 0.23.x line).** This is the
 single highest-leverage change in the sprint and the first code PR (after the `develop`
 sync, §4/§8). Both the fusion restore and Kagome's port depend on it; doing it first
-isolates 0.15→0.23 API-drift breakage against the 69-test suite (see "Audit the drift"
-below).
+isolates 0.15→0.23 API-drift breakage against the existing test suite (82 tests under CI's
+working-features set; see §0 and "Audit the drift" below).
 
 ### Audit the drift
 
-Before merging the bump, run a focused diff of the symbols Minuet uses
+`amari-holographic` 0.23.0 is confirmed published (crates.io, 2026-05-24, not yanked), so
+this target is real. Before merging the bump, run a focused diff of the symbols Minuet uses
 (`BindingAlgebra`, `ProductCliffordAlgebra`, `Resonator`, `ResonatorConfig`,
 `HolographicMemory`, `AlgebraConfig`, `RetrievalResult`) across 0.15 → 0.23. Expect
 renames/signature changes in the `Resonator` and retrieval surface (those are exactly the
-areas that gained the generic `Resonator<A>`). The 69-test suite is the safety net.
+areas that gained the generic `Resonator<A>`).
+
+**Known concrete drift (verified from the 0.23.0 manifest):** amari 0.23 depends on
+`rand` / `rand_chacha` **0.10**, while Minuet pins `rand` **0.8** — budget for a split rand
+tree or for bumping Minuet to rand 0.10 (touches `MockOpticalHardware` and any RNG-using
+code). The existing test suite (82 tests under CI's working-features set, 41 minimal — §0)
+is the safety net.
 
 ---
 
@@ -217,9 +265,17 @@ coordination with Kagome**, so it's testable without physical hardware.
 
 ## 6. Other readiness points
 
-- **CI.** Verify a CI workflow exists and runs `fmt`, `clippy -D warnings`, the test
-  matrix (default + `optical` + `full`), and `cargo doc`. The v0.3.0 branch added
-  `rust-toolchain.toml` (nightly) — confirm CI uses it. IA standard: see
+- **CI — verified present and strong** (`.github/workflows/ci.yml`, re-checked 2026-06-19).
+  `RUSTFLAGS=-Dwarnings` is set globally. Jobs: `check`, `test`, `fmt`
+  (`cargo fmt --all -- --check`), `clippy` (`-- -D warnings`), `docs`
+  (`cargo doc --no-deps`, `RUSTDOCFLAGS=-Dwarnings`), `examples`, `minimal`
+  (`--no-default-features`), and a `features` matrix (`""`, `parallel`, `serde`, `async`).
+  Toolchain is nightly via `dtolnay/rust-toolchain`, which honors `rust-toolchain.toml`.
+  The `test`/`check`/`clippy`/`docs` jobs run with `WORKING_FEATURES = parallel,serde,async,optical`.
+  **Remaining nits for WS 6:** (a) the `features` matrix does **not** isolate `optical`
+  standalone (it's only exercised via the all-features jobs) — add an `optical` matrix leg;
+  (b) `persistence` is excluded everywhere by design (RocksDB needs a C++ toolchain) — keep
+  it excluded but document the requirement in the README. IA reference template:
   [`IA-documents/IA-rust-common/rust-ci-template.yml`](../IA-documents/IA-rust-common/rust-ci-template.yml).
 - **`persistence` feature** requires a C++ toolchain (RocksDB) and is not tested in CI per
   `HANDOFF.md`. Document this in the README; ensure Kagome-facing examples don't depend on it.
@@ -253,18 +309,20 @@ So the implementing session knows the downstream contract:
 
 ## 8. Recommended sprint plan (workstream sequencing)
 
-Ordered by dependency; each item is a PR against `develop` (after §4 sequencing decision).
+Ordered by dependency; each item is a PR against `develop`. **Prerequisite:** WS 0 must
+sync `develop` ← `main` first — this handoff branch currently sits on `main`, not
+`develop` (see §0).
 
 | # | Workstream | Depends on | Approx scope |
 |---|-----------|------------|--------------|
-| 0 | **Sync `develop` ← `main` + delete redundant stranded branch** (§4) | — | merge main→develop (preserve `5aade1e`); delete `feature/relicense-ia-conformance-0.3.0`; re-establish AGPL/conformance baseline on develop |
-| 1 | **Bump `amari-holographic` floor `^0.15` → `^0.23`** (§3-A) | 0 | Cargo.toml + adapt to API drift; 69-test safety net |
+| 0 | **Sync `develop` ← `main` + delete redundant stranded branch** (§4) | — | merge main→develop (preserve `5aade1e`); delete `feature/relicense-ia-conformance-0.3.0`; re-establish AGPL/conformance baseline on develop. **Status: unstarted — active next step; no PRs open.** |
+| 1 | **Bump `amari-holographic` floor `^0.15` → `^0.23`** (§3-A) | 0 | Cargo.toml + adapt to API drift (expect rand 0.8→0.10 skew); 82-test safety net |
 | 2 | **Restore `temperature.rs`** (§2-B) | 0 | near-verbatim; pure Minuet, no new dep |
 | 3 | **Re-express `Attribution` over `BindingAlgebra`** (§2-B) | 1 | port `attribution.rs` from `TropicalDualClifford` to generic `A` |
 | 4 | **Wire annealed temperature into `ResonatorRetriever`** (§2-B) | 2,3 | close the loop: annealed cleanup as a retriever option |
 | 4b | **Experimental `tropical-dual` feature** (§2) | 1,4 | additive feature pulling `amari-fusion`; restore the `TropicalDualClifford` resonator API as opt-in; default path unchanged |
 | 5 | **Implement `optical_store` compute path** (§5) | 1 | bind+bundle via `OpticalFieldAlgebra`; Mock-hardware reference impl; coordinate with Kagome |
-| 6 | **CI + doc hygiene pass** (§6) | 0 | fmt/clippy/test/doc matrix; un-ignore doc-tests where possible |
+| 6 | **CI + doc hygiene pass** (§6) | 0 | CI already strong (§6) — add `optical` matrix leg, document `persistence` C++ need in README; un-ignore doc-tests where the amari bump allows |
 
 Items 1–4 are the "amari seam + fusion restore" core. Item 5 is the Kagome-shared compute
 path. Items 0 and 6 are housekeeping that should bookend the sprint.
@@ -275,13 +333,15 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
 - [ ] `develop` synced from `main`: AGPL-3.0-only, SPDX headers on all `.rs` files, redundant stranded branch deleted (§4).
 - [ ] `amari-holographic` resolves to 0.23.x in the lockfile (§3).
-- [ ] `cargo test --all-features` green; test count ≥ 69 and *increased* by restored
-      retrieval coverage (§2).
+- [ ] `cargo test --all-features` green; test count ≥ 82 (current CI working-features
+      baseline; 41 minimal — §0) and *increased* by restored retrieval coverage (§2).
 - [ ] `Attribution` and `TemperatureSchedule` are reachable from the public API and have
       doc-tests (§2).
 - [ ] `optical_store` performs a real bind+bundle verifiable via `MockOpticalHardware`
       (§5).
-- [ ] `cargo clippy --all-features -- -D warnings` and `cargo doc --no-deps` clean.
+- [ ] `cargo clippy --features "parallel,serde,async,optical" -- -D warnings` and
+      `cargo doc --no-deps` clean (CI deliberately excludes `persistence`, which needs a
+      C++ toolchain — §6).
 - [ ] Kagome's `--features minuet` build still passes against the updated Minuet (§7).
 
 ---
