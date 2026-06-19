@@ -3,7 +3,7 @@
 **Project:** Minuet — holographic memory toolkit built on amari-holographic
 **Branch:** `docs/kagome-readiness-handoff` (rebased onto `main` — the AGPL v0.3.0 base)
 **Date:** 2026-06-19 (revised after branch-topology verification; repo re-verified same day — see §0)
-**Status:** Decisions locked (§10). Repo re-verified 2026-06-19 (§0). Next action = WS 0 (sync `develop` ← `main`); unstarted.
+**Status:** Decisions locked (§10). **WS 0 COMPLETE (2026-06-19): `develop` synced ← `origin/main`, redundant stranded branch deleted (§0). Next action = WS 1 (amari floor `^0.15` → `^0.23`).**
 **Purpose:** Prepare Minuet for integration with [Kagome](../Kagome) (the microwave-optical
 back-end) — restore capability lost in the v0.3.0 tech-debt release, fix the amari
 dependency seam, and close the gaps a physical back-end exposes.
@@ -15,44 +15,67 @@ dependency seam, and close the gaps a physical back-end exposes.
 
 ---
 
-## 0. Verified state snapshot (2026-06-19, re-verified)
+## 0. State snapshot + WS 0 result (2026-06-19)
 
-Re-derived against the live repo so the next session doesn't re-audit. Every claim below
-was checked directly (not carried from prior drafts).
+### WS 0 — COMPLETE
 
-- **This branch** (`docs/kagome-readiness-handoff`) is rebased onto `main` (verified:
-  `main` is an ancestor of HEAD), **not** onto `develop`. It sits 3 commits past `main`:
-  the CI-workflow commit, the handoff (`d57cc0c`), and the topology correction (`2f9f9e5`).
-- **`develop` is stale** — 7 behind / 1 ahead of `main`. The 1-ahead commit is `5aade1e`
-  (CI auto-project workflow), whose identical content is already on `main` as `18b3320`,
-  so `main` → `develop` should merge cleanly. `develop`'s `LICENSE` is still the pre-relicense
-  (empty-header) file; `main`'s is AGPL. ⇒ **Workstream 0 (sync) is unstarted and is the
-  active next step.** No PRs are open.
-- **Stranded branch** `feature/relicense-ia-conformance-0.3.0` is confirmed redundant
-  (`git diff --diff-filter=A main..origin/feature/relicense-ia-conformance-0.3.0` is empty).
-  Safe to delete in WS 0.
-- **amari floor** still `amari-holographic = "0.15"` (Cargo.toml:16); lockfile pins `0.15.1`.
-  **WS 1 (bump) unstarted.**
-- **`amari-holographic` 0.23.0 is published** (crates.io, 2026-05-24; not yanked) — the
-  WS 1 target is real.
-- **Test baseline (verified by running, not estimated):**
-  - `cargo test --features "parallel,serde,async,optical"` (CI's `WORKING_FEATURES`):
-    **82 lib + 11 integration tests pass (8 of the integration tests are `ignore`d).**
-  - minimal / `--no-default-features`: **41 lib tests pass.**
-  - The earlier "69-test suite" figure in this doc was inaccurate; use the numbers above.
-- **CI is already strong** (`.github/workflows/ci.yml`): `RUSTFLAGS=-Dwarnings` globally;
-  jobs = check / test / fmt (`--check`) / clippy (`-D warnings`) / docs
-  (`RUSTDOCFLAGS=-Dwarnings`) / examples / minimal-features / feature-combo matrix; nightly
-  via `dtolnay/rust-toolchain` (honors `rust-toolchain.toml`). ⇒ **§6 / WS 6 is largely
-  pre-satisfied;** remaining nits noted in §6.
-- **Concrete drift to expect in WS 1:** amari 0.23 depends on **`rand` / `rand_chacha`
-  0.10**, while Minuet pins **`rand` 0.8**. Plan for either a split rand tree or bumping
-  Minuet's `rand` to 0.10 (affects `MockOpticalHardware` and RNG-using code).
+- **`develop` synced ← `origin/main`.** Merge commit `5665040` on `develop` (parents
+  `5aade1e` + `18b3320`); `develop` is now **content-identical to `origin/main`**
+  (`git diff origin/main develop` is empty). Pushed to origin (`5aade1e..5665040`).
+- **Conformance verified on `develop`:** `LICENSE` = AGPL header, `license = "AGPL-3.0-only"`,
+  `// SPDX-License-Identifier: AGPL-3.0-only` on `src/lib.rs`, `LICENSE-COMMERCIAL` present,
+  `LICENSE-MIT`/`LICENSE-APACHE` removed; `Cargo.toml` version `0.3.0`.
+- **Redundant stranded branch deleted.** `feature/relicense-ia-conformance-0.3.0` removed
+  from origin (it added nothing over `origin/main`: empty `git diff --diff-filter=A`).
+  **Recovery SHA `756dab0`** (recreate with `git branch <name> 756dab0`).
+- **Regression state on `develop`:** the deleted retrieval files (`attribution.rs`,
+  `resonator.rs`, `temperature.rs`) are gone (only `direct.rs`, `mod.rs`,
+  `resonator_retriever.rs` remain) — i.e. the v0.3.0 amari-fusion removal is present, as
+  expected. Restoring it is WS 2–4.
+- **Green on `develop`:** `cargo test --features "parallel,serde,async,optical"` →
+  82 lib + 11 integration (8 ignored) pass; `cargo fmt --check` and
+  `cargo clippy --features "parallel,serde,async,optical" -- -D warnings` clean.
+- **amari floor intentionally untouched** (`amari-holographic = "0.15"`, lockfile `0.15.1`) —
+  the bump is WS 1.
 
-> **PR targeting note.** IA gitflow is `feature/*` → `develop`. Because this handoff
-> branch currently sits on `main`, the very first action is WS 0 (sync `develop` ← `main`);
-> only then do the `feature/*` readiness PRs — and the merge of this doc into `develop` —
-> target a non-stale `develop`.
+### Correction recorded (local vs canonical main)
+
+The first draft of §0 treated **local `main` (`bcbba1b`)** as "main". The canonical
+upstream is **`origin/main` = `18b3320`** (one commit ahead of `bcbba1b` — the
+`.github/workflows/project.yml` auto-project workflow). Local `main` was stale; it was
+fast-forwarded to `origin/main` as part of WS 0. When this doc says "main" below, it means
+`origin/main`. The sync was clean precisely because `develop`'s only divergent commit
+(`5aade1e`) adds a `project.yml` byte-identical to `origin/main`'s (`18b3320`).
+
+### Where this handoff branch stands now
+
+`docs/kagome-readiness-handoff` was built on `bcbba1b` and carries its own `project.yml`
+commit (`132d9b0`, byte-identical to `18b3320`/`5aade1e`) plus the handoff/correction/
+re-verify commits (`d57cc0c`, `2f9f9e5`, `e5eb3ef`). **It now rebases cleanly onto the
+synced `develop`** — the duplicate `project.yml` dedupes and the doc commits replay on top.
+Recommended before its PR: `git rebase develop` so it targets `develop` (normal gitflow).
+
+### Unchanged facts (still valid going into WS 1)
+
+- **amari floor** `0.15` → bump to `0.23` is **WS 1 (the next action)**.
+- **`amari-holographic` 0.23.0 is published** (crates.io, 2026-05-24; not yanked) — WS 1
+  target is real.
+- **Test baseline:** 82 lib + 11 integration (8 ignored) under `WORKING_FEATURES`; 41
+  minimal. (Earlier "69-test suite" figure was inaccurate.)
+- **CI is strong** (`.github/workflows/ci.yml`, `RUSTFLAGS=-Dwarnings`): check / test / fmt /
+  clippy / docs / examples / minimal / feature-matrix, nightly via `dtolnay/rust-toolchain`.
+  ⇒ §6 / WS 6 largely pre-satisfied; remaining nits in §6.
+- **Concrete drift to expect in WS 1:** amari 0.23 depends on `rand` / `rand_chacha`
+  **0.10**; Minuet pins `rand` **0.8**. Plan split-rand-tree or bump (touches
+  `MockOpticalHardware` and RNG-using code).
+
+> **PR targeting note (updated).** `develop` is now the non-stale AGPL/conformance base.
+> `feature/*` readiness PRs (WS 1+) target `develop` per IA gitflow. This doc branch should
+> be rebased onto `develop` (see above) before its PR.
+>
+> **Other remote branches (out of WS-0 scope, not yet assessed):** `origin/feature/optical-backend`
+> and `origin/refactor/toolkit-conversion` still exist. They were **not** part of WS 0 and
+> are not deleted. Worth a staleness check in WS 6 / housekeeping.
 
 ---
 
@@ -315,7 +338,7 @@ sync `develop` ← `main` first — this handoff branch currently sits on `main`
 
 | # | Workstream | Depends on | Approx scope |
 |---|-----------|------------|--------------|
-| 0 | **Sync `develop` ← `main` + delete redundant stranded branch** (§4) | — | merge main→develop (preserve `5aade1e`); delete `feature/relicense-ia-conformance-0.3.0`; re-establish AGPL/conformance baseline on develop. **Status: unstarted — active next step; no PRs open.** |
+| 0 | **Sync `develop` ← `main` + delete redundant stranded branch** (§4) | — | **✅ DONE (2026-06-19):** `develop` = `5665040`, content-identical to `origin/main` (`5aade1e`+`18b3320`); `feature/relicense-ia-conformance-0.3.0` deleted (recovery `756dab0`); pushed to origin. |
 | 1 | **Bump `amari-holographic` floor `^0.15` → `^0.23`** (§3-A) | 0 | Cargo.toml + adapt to API drift (expect rand 0.8→0.10 skew); 82-test safety net |
 | 2 | **Restore `temperature.rs`** (§2-B) | 0 | near-verbatim; pure Minuet, no new dep |
 | 3 | **Re-express `Attribution` over `BindingAlgebra`** (§2-B) | 1 | port `attribution.rs` from `TropicalDualClifford` to generic `A` |
@@ -331,7 +354,9 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
 ## 9. Verification checklist (before declaring the sprint done)
 
-- [ ] `develop` synced from `main`: AGPL-3.0-only, SPDX headers on all `.rs` files, redundant stranded branch deleted (§4).
+- [x] `develop` synced from `main`: AGPL-3.0-only, SPDX header on `src/lib.rs`, redundant
+      stranded branch deleted (§4). `develop`=`5665040` ≡ `origin/main`; verified green
+      (82+11 tests, fmt/clippy clean).
 - [ ] `amari-holographic` resolves to 0.23.x in the lockfile (§3).
 - [ ] `cargo test --all-features` green; test count ≥ 82 (current CI working-features
       baseline; 41 minimal — §0) and *increased* by restored retrieval coverage (§2).
