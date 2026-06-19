@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Optical Memory Demo
 //!
 //! Demonstrates the optical backend with checkpoint-based persistence.

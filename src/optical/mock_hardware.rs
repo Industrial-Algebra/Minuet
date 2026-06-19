@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Mock optical hardware for testing without physical devices.
 //!
 //! `MockOpticalHardware` simulates the behavior of a DMD + MMF optical system

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! T-matrix fingerprinting for hardware state validation.
 //!
 //! Fast validation of optical hardware state without storing or recomputing

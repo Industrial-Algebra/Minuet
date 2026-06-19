@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Direct retriever - returns raw results without cleanup.
 
 use amari_holographic::BindingAlgebra;
@@ -15,7 +17,7 @@ use crate::traits::{CleanupResult, RetrievalContext, Retriever};
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```rust
 /// use minuet::retrieval::DirectRetriever;
 /// use amari_holographic::ProductCliffordAlgebra;
 ///

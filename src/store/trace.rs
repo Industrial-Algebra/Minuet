@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Dense trace implementation.
 //!
 //! The fundamental holographic storage unit.
@@ -16,17 +18,18 @@ use crate::traits::MemoryTrace;
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use minuet::store::DenseTrace;
-/// use amari_holographic::ProductCliffordAlgebra;
-///
-/// type Algebra = ProductCliffordAlgebra<32>;
+/// ```rust
+/// # use minuet::prelude::*;
+/// # type Algebra = ProductCliffordAlgebra<32>;
+/// # fn main() -> MinuetResult<()> {
 /// let mut trace = DenseTrace::<Algebra>::new();
 ///
 /// let item = Algebra::random_versor(2);
 /// trace.add(&item, 1.0);
 ///
 /// assert!(trace.similarity(&item) > 0.5);
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug)]
 pub struct DenseTrace<A: BindingAlgebra> {
@@ -143,11 +146,8 @@ impl<A: BindingAlgebra> MemoryTrace for DenseTrace<A> {
             .map_or_else(|_| trace.clone(), |inv| inv.bind(&*trace))
     }
 
-    fn as_algebra(&self) -> &A {
-        // This is a bit awkward due to RwLock, but we can return a reference
-        // by leaking temporarily. In practice, callers should use similarity/unbind.
-        // For now, we'll panic - real usage should go through similarity/unbind.
-        unimplemented!("Use similarity() or unbind() instead of as_algebra()")
+    fn as_algebra(&self) -> A {
+        self.trace.read().clone()
     }
 }
 

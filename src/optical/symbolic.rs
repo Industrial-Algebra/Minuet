@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Symbolic expression types for hardware-independent memory representation.
 //!
 //! These expressions can be serialized, transmitted, and instantiated on any

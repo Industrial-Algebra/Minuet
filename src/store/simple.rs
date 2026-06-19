@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Industrial Algebra
+// SPDX-License-Identifier: AGPL-3.0-only
 //! Simple single-trace memory store.
 //!
 //! Minimal implementation for learning and simple use cases.
@@ -23,12 +25,10 @@ use super::DenseTrace;
 ///
 /// # Example
 ///
-/// ```rust,ignore
-/// use minuet::store::SimpleStore;
-/// use amari_holographic::ProductCliffordAlgebra;
-///
-/// type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions
-///
+/// ```rust
+/// # use minuet::prelude::*;
+/// # type Algebra = ProductCliffordAlgebra<64>; // 512 dimensions
+/// # fn main() -> MinuetResult<()> {
 /// let store = SimpleStore::<Algebra>::new();
 ///
 /// let key = Algebra::random_versor(2);
@@ -36,6 +36,8 @@ use super::DenseTrace;
 ///
 /// store.store(&key, &value)?;
 /// let result = store.retrieve(&key)?;
+/// # Ok(())
+/// # }
 /// ```
 pub struct SimpleStore<A: BindingAlgebra> {
     trace: RwLock<DenseTrace<A>>,
