@@ -33,7 +33,7 @@ dependency seam, and close the gaps a physical back-end exposes.
   `resonator_retriever.rs` remain) — i.e. the v0.3.0 amari-fusion removal is present, as
   expected. Restoring it is WS 2–4.
 - **Green on `develop`:** `cargo test --features "parallel,serde,async,optical"` →
-  82 lib + 11 integration (8 ignored) pass; `cargo fmt --check` and
+  82 lib unit tests + 11 doc-tests (8 ignored) pass; `cargo fmt --check` and
   `cargo clippy --features "parallel,serde,async,optical" -- -D warnings` clean.
 - **amari floor intentionally untouched** (`amari-holographic = "0.15"`, lockfile `0.15.1`) —
   the bump is WS 1.
@@ -42,7 +42,7 @@ dependency seam, and close the gaps a physical back-end exposes.
 
 - **amari floor bumped `^0.15` → `^0.23`** on `feature/amari-floor-0.23` (commit `0e8fce5`,
   **PR #10** against `develop`). Zero source changes; resolves `amari-holographic 0.23.0` +
-  `amari-core 0.23.0`. Green: 82 lib + 11 integration tests, fmt/clippy/doc clean across
+  `amari-core 0.23.0`. Green: 82 lib unit tests + 11 doc-tests, fmt/clippy/doc clean across
   the full feature matrix.
 - **rand skew materialized as a split tree** (Minuet `rand` 0.8 for `optical` / amari
   `rand` 0.10) that compiles cleanly — no rand types cross the boundary. Consolidation
@@ -82,8 +82,10 @@ Recommended before its PR: `git rebase develop` so it targets `develop` (normal 
 - **amari floor** `0.15` → bump to `0.23` is **WS 1 (the next action)**.
 - **`amari-holographic` 0.23.0 is published** (crates.io, 2026-05-24; not yanked) — WS 1
   target is real.
-- **Test baseline:** 82 lib + 11 integration (8 ignored) under `WORKING_FEATURES`; 41
-  minimal. (Earlier "69-test suite" figure was inaccurate.)
+- **Test baseline:** 82 lib unit tests + 11 doc-tests (8 ignored) under `WORKING_FEATURES`;
+  41 lib unit tests minimal. (Earlier "69-test suite" figure was inaccurate. The "11
+  integration" phrasing in earlier drafts was also wrong — those are **doc-tests**, not
+  integration tests. WS 2 raises the counts to 89 lib + 13 doc-tests once PR #11 merges.)
 - **CI is strong** (`.github/workflows/ci.yml`, `RUSTFLAGS=-Dwarnings`): check / test / fmt /
   clippy / docs / examples / minimal / feature-matrix, nightly via `dtolnay/rust-toolchain`.
   ⇒ §6 / WS 6 largely pre-satisfied; remaining nits in §6.
@@ -404,7 +406,7 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 
 - [x] `develop` synced from `main`: AGPL-3.0-only, SPDX header on `src/lib.rs`, redundant
       stranded branch deleted (§4). `develop`=`5665040` ≡ `origin/main`; verified green
-      (82+11 tests, fmt/clippy clean).
+      (82 lib unit + 11 doc-tests, fmt/clippy clean).
 - [~] `amari-holographic` resolves to 0.23.x in the lockfile (§3) — **done in PR #10
       (WS 1), pending merge to `develop`.**
 - [ ] `cargo test --all-features` green; test count ≥ 82 (current CI working-features
