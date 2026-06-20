@@ -13,7 +13,7 @@ categories = ["data-structures", "science", "algorithms"]
 [dependencies]
 # Core holographic types (required)
 # Provides: BindingAlgebra, HolographicMemory, Resonator, algebras
-amari-holographic = { version = "0.15", features = ["serialize"] }
+amari-holographic = { version = "0.23", features = ["serialize"] }
 
 # Utilities
 thiserror = "2.0"
