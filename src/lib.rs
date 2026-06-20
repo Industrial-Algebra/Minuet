@@ -156,6 +156,7 @@ pub mod prelude {
 
     // Retrieval
     pub use crate::retrieval::{DirectRetriever, ResonatorRetriever};
+    pub use crate::retrieval::{Temperature, TemperatureSchedule};
 
     // Pipeline
     pub use crate::pipeline::PipelineBuilder;
