@@ -166,6 +166,51 @@ impl Temperature {
             _ => 1,
         }
     }
+
+    /// Translate this temperature into an amari-holographic
+    /// [`ResonatorConfig`](amari_holographic::ResonatorConfig), preserving
+    /// the default convergence threshold for non-annealed variants.
+    ///
+    /// The mapping is:
+    /// - [`Temperature::Soft`] → `initial_beta = final_beta = 1.0` (no anneal).
+    /// - [`Temperature::Hard`] → both betas very large (winner-take-all).
+    /// - [`Temperature::Beta`](`Temperature::Beta`) → both betas `b` (fixed sharpness).
+    /// - [`Temperature::Annealed { start, end, steps }`] →
+    ///   `initial_beta = start`, `final_beta = end`, `max_iterations = steps`
+    ///   (annealed cleanup, the value a noisy microwave backend relies on).
+    ///
+    /// This is the seam that lets a
+    /// [`ResonatorRetriever`](crate::retrieval::ResonatorRetriever) be
+    /// configured from a `Temperature` rather than raw beta floats.
+    #[must_use]
+    pub fn to_resonator_config(&self) -> amari_holographic::ResonatorConfig {
+        // Beta used for the "hard" tropical limit. amari's default final_beta
+        // is 100.0; we use f64::MAX as the symbolic tropical/winner-take-all
+        // value (matches `Temperature::Hard`'s `beta_at` semantics).
+        const HARD_BETA: f64 = f64::MAX;
+
+        let mut config = amari_holographic::ResonatorConfig::default();
+        match self {
+            Self::Soft => {
+                config.initial_beta = 1.0;
+                config.final_beta = 1.0;
+            }
+            Self::Hard => {
+                config.initial_beta = HARD_BETA;
+                config.final_beta = HARD_BETA;
+            }
+            Self::Beta(b) => {
+                config.initial_beta = *b;
+                config.final_beta = *b;
+            }
+            Self::Annealed { start, end, steps } => {
+                config.initial_beta = *start;
+                config.final_beta = *end;
+                config.max_iterations = *steps;
+            }
+        }
+        config
+    }
 }
 
 /// Temperature schedule for multi-step operations.
@@ -412,5 +457,34 @@ mod tests {
                 assert!((original.beta_at(i) - decoded.beta_at(i)).abs() < 1e-9);
             }
         }
+    }
+
+    /// WS 4: `to_resonator_config` maps each `Temperature` variant into the
+    /// amari `ResonatorConfig` betas (and iterations for the annealed case).
+    #[test]
+    fn to_resonator_config_mapping() {
+        let default_max = amari_holographic::ResonatorConfig::default().max_iterations;
+
+        let soft = Temperature::soft().to_resonator_config();
+        assert_eq!(soft.initial_beta, 1.0);
+        assert_eq!(soft.final_beta, 1.0);
+        assert_eq!(soft.max_iterations, default_max);
+
+        let hard = Temperature::hard().to_resonator_config();
+        // `Hard` maps to `f64::MAX`, the same symbolic tropical-limit value
+        // `Temperature::hard().beta_at(_)` returns.
+        assert_eq!(hard.initial_beta, f64::MAX);
+        assert_eq!(hard.final_beta, f64::MAX);
+
+        let beta = Temperature::beta(3.0).unwrap().to_resonator_config();
+        assert_eq!(beta.initial_beta, 3.0);
+        assert_eq!(beta.final_beta, 3.0);
+
+        let annealed = Temperature::annealed(2.0, 50.0, 17)
+            .unwrap()
+            .to_resonator_config();
+        assert_eq!(annealed.initial_beta, 2.0);
+        assert_eq!(annealed.final_beta, 50.0);
+        assert_eq!(annealed.max_iterations, 17);
     }
 }
