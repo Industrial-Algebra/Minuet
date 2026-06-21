@@ -106,6 +106,58 @@ impl<A: BindingAlgebra> ResonatorRetriever<A> {
         self.config.max_iterations = iters;
         self
     }
+
+    /// Configure cleanup annealing from a [`Temperature`](super::Temperature).
+    ///
+    /// This is the WS 4 seam that closes the loop between the restored
+    /// annealed-temperature API and the resonator cleanup loop. A
+    /// [`Temperature::annealed`](super::Temperature::annealed) value drives
+    /// the resonator from a soft (broad basin) start toward a hard
+    /// (tropical/winner-take-all) finish across the configured steps —
+    /// exactly the behaviour a noisy microwave backend needs to reject
+    /// phase noise during cleanup.
+    ///
+    /// Additive over the raw-beta setters
+    /// ([`initial_temperature`](Self::initial_temperature) /
+    /// [`final_temperature`](Self::final_temperature)): this overwrites both
+    /// betas (and `max_iterations` for an annealed temperature) from the
+    /// single `Temperature` value. See
+    /// [`Temperature::to_resonator_config`](super::Temperature::to_resonator_config)
+    /// for the exact mapping.
+    ///
+    /// If this retriever already holds a built resonator, it is discarded so
+    /// the next [`cleanup`](Retriever::cleanup) rebuilds from the codebook
+    /// using the new config (a pre-built resonator bakes the old config in).
+    #[must_use]
+    pub fn with_temperature(mut self, temperature: &super::Temperature) -> Self {
+        self.config = temperature.to_resonator_config();
+        self.resonator = None;
+        self
+    }
+
+    /// Configure cleanup annealing from a [`TemperatureSchedule`](super::TemperatureSchedule).
+    ///
+    /// Uses the schedule's first and last beta as the resonator's
+    /// `initial_beta` / `final_beta` and the schedule length as
+    /// `max_iterations`. The full schedule shape (linear / exponential /
+    /// cosine) is approximated by the resonator's own two-point anneal —
+    /// amari's `ResonatorConfig` exposes only start/end betas, so a richer
+    /// per-iteration shape is not yet expressible through this seam.
+    ///
+    /// An empty schedule is a no-op (the existing config is kept).
+    #[must_use]
+    pub fn with_temperature_schedule(mut self, schedule: &super::TemperatureSchedule) -> Self {
+        if let (Some(&first), Some(&last)) = (
+            schedule.temperatures().first(),
+            schedule.temperatures().last(),
+        ) {
+            self.config.initial_beta = first;
+            self.config.final_beta = last;
+            self.config.max_iterations = schedule.len();
+            self.resonator = None;
+        }
+        self
+    }
 }
 
 impl<A: BindingAlgebra> Retriever for ResonatorRetriever<A> {
@@ -153,6 +205,7 @@ impl<A: BindingAlgebra> Retriever for ResonatorRetriever<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::retrieval::{Temperature, TemperatureSchedule};
     use amari_holographic::ProductCliffordAlgebra;
 
     type TestAlgebra = ProductCliffordAlgebra<8>;
@@ -183,5 +236,68 @@ mod tests {
 
         // Without codebook, should return raw
         assert!(result.value.similarity(&raw) > 0.99);
+    }
+
+    /// WS 4: an annealed `Temperature` drives cleanup from a soft start to a
+    /// hard finish and still converges on the correct codebook symbol. Uses
+    /// 50 steps to match the default config's proven-sufficient iteration
+    /// budget (amari's resonator anneals one beta-step per iteration, so
+    /// `Annealed{steps}` maps to `max_iterations = steps`).
+    ///
+    /// `with_temperature` clears any pre-built resonator (so the new config
+    /// takes effect), so the codebook is supplied via the retrieval context.
+    #[test]
+    fn cleanup_with_annealed_temperature() {
+        let symbols: Vec<TestAlgebra> = (0..5).map(|_| TestAlgebra::random_versor(2)).collect();
+
+        let retriever = ResonatorRetriever::new()
+            .with_temperature(&Temperature::annealed(1.0, 100.0, 50).unwrap());
+
+        let context = RetrievalContext::default().with_codebook(symbols.clone());
+        let result = retriever.cleanup(&symbols[2], &context).unwrap();
+
+        assert!(result.converged);
+        assert!(result.confidence > 0.9);
+        assert_eq!(result.codebook_match, Some(2));
+    }
+
+    /// WS 4: `with_temperature` is additive and overwrites both betas (and
+    /// max_iterations for an annealed temperature). The `from_symbols` path
+    /// builds a resonator with the default config; applying a temperature
+    /// afterward discards it and rebuilds, so the new config takes effect.
+    #[test]
+    fn with_temperature_overwrites_config() {
+        let symbols: Vec<TestAlgebra> = (0..3).map(|_| TestAlgebra::random_versor(2)).collect();
+
+        let retriever = ResonatorRetriever::from_symbols(symbols).unwrap();
+        // Capture the default to prove the overwrite below.
+        assert_eq!(retriever.config.max_iterations, 50);
+
+        let retriever = retriever.with_temperature(&Temperature::annealed(2.0, 50.0, 12).unwrap());
+        assert_eq!(retriever.config.initial_beta, 2.0);
+        assert_eq!(retriever.config.final_beta, 50.0);
+        assert_eq!(retriever.config.max_iterations, 12);
+        // The pre-built resonator was discarded so the new config takes effect.
+        assert!(retriever.resonator.is_none());
+    }
+
+    /// WS 4: a `TemperatureSchedule` maps its endpoints + length into the
+    /// resonator config.
+    #[test]
+    fn with_temperature_schedule_maps_endpoints() {
+        let retriever = ResonatorRetriever::<TestAlgebra>::new()
+            .with_temperature_schedule(&TemperatureSchedule::cosine(1.0, 10.0, 8));
+        assert!((retriever.config.initial_beta - 1.0).abs() < 1e-12);
+        assert!((retriever.config.final_beta - 10.0).abs() < 1e-12);
+        assert_eq!(retriever.config.max_iterations, 8);
+    }
+
+    /// WS 4: an empty schedule is a no-op (default config preserved).
+    #[test]
+    fn with_empty_schedule_is_noop() {
+        let retriever = ResonatorRetriever::<TestAlgebra>::new()
+            .with_temperature_schedule(&TemperatureSchedule::constant(1.0, 0));
+        // Default ResonatorConfig::max_iterations is 50.
+        assert_eq!(retriever.config.max_iterations, 50);
     }
 }
