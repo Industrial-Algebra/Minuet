@@ -54,7 +54,7 @@ fn sharded_store_capacity_distribution() -> MinuetResult<()> {
     let store = ShardedStore::<Algebra>::with_shards(8);
 
     // Store items
-    for i in 0..16 {
+    for _ in 0..16 {
         let key = Algebra::random_versor(2);
         let value = Algebra::random_versor(2);
         store.store(&key, &value)?;
