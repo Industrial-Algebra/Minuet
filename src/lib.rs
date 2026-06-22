@@ -155,7 +155,9 @@ pub mod prelude {
     pub use crate::encoding::HashMapCodebook;
 
     // Retrieval
+    pub use crate::retrieval::{Attribution, AttributionQuery, AttributionResult};
     pub use crate::retrieval::{DirectRetriever, ResonatorRetriever};
+    pub use crate::retrieval::{Temperature, TemperatureSchedule};
 
     // Pipeline
     pub use crate::pipeline::PipelineBuilder;

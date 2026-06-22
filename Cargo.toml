@@ -1,6 +1,6 @@
 [package]
 name = "minuet"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 # Requires nightly for amari-gpu compatibility
 description = "Holographic memory systems built on amari-holographic — the optical table for holographic computing"
@@ -13,7 +13,7 @@ categories = ["data-structures", "science", "algorithms"]
 [dependencies]
 # Core holographic types (required)
 # Provides: BindingAlgebra, HolographicMemory, Resonator, algebras
-amari-holographic = { version = "0.15", features = ["serialize"] }
+amari-holographic = { version = "0.23", features = ["serialize"] }
 
 # Utilities
 thiserror = "2.0"
@@ -61,6 +61,14 @@ async = ["tokio"]
 optical = ["serde", "ordered-float", "rand", "rand_chacha"]
 # NOTE: persistence is excluded from full because it requires C++ build tools
 full = ["parallel", "serde", "async", "optical"]
+
+# Integration tests live one level deep (tests/integration/), which Cargo does
+# NOT auto-discover (only tests/*.rs directly is auto-discovered). Declare them
+# explicitly so they actually run in CI. Without this the suite was silently
+# skipping tests/integration/end_to_end.rs (5 tests). (WS 6.)
+[[test]]
+name = "end_to_end"
+path = "tests/integration/end_to_end.rs"
 
 # Examples with feature requirements
 [[example]]
