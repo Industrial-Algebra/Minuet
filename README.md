@@ -386,7 +386,12 @@ minuet = { version = "0.2", features = ["optical"] }
 | `persistence` | RocksDB storage | `rocksdb`, `serde` |
 | `async` | Async support | `tokio` |
 | `optical` | Optical backend | `serde`, `ordered-float`, `rand` |
-| `full` | All features | all above |
+| `full` | All features (except `persistence`) | all above |
+
+> **⚠️ `persistence` requires a C++ toolchain** (RocksDB's `librocksdb` is built from
+> source via `cc`/`cmake`). It is **excluded from `full`** and from CI for this reason.
+> To use it, install `clang`/`gcc` + `cmake` and enable the feature explicitly:
+> `minuet = { features = ["persistence"] }`. Kagome-facing examples do not depend on it.
 
 ## Documentation
 

@@ -62,6 +62,14 @@ optical = ["serde", "ordered-float", "rand", "rand_chacha"]
 # NOTE: persistence is excluded from full because it requires C++ build tools
 full = ["parallel", "serde", "async", "optical"]
 
+# Integration tests live one level deep (tests/integration/), which Cargo does
+# NOT auto-discover (only tests/*.rs directly is auto-discovered). Declare them
+# explicitly so they actually run in CI. Without this the suite was silently
+# skipping tests/integration/end_to_end.rs (5 tests). (WS 6.)
+[[test]]
+name = "end_to_end"
+path = "tests/integration/end_to_end.rs"
+
 # Examples with feature requirements
 [[example]]
 name = "optical_memory_demo"

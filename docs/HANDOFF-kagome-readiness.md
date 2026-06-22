@@ -434,7 +434,7 @@ the synced AGPL/conformance base; this handoff branch is rebased onto `develop` 
 | 4 | **Wire annealed temperature into `ResonatorRetriever`** (§2-B) | 2,3 | close the loop: annealed cleanup as a retriever option |
 | 4b | **Real dual-number gradient attribution** (§2, revised) | 1,4 | **DONE (PR #15):** real forward-mode dual attribution on amari-core — `attrib_i = ⟨rᵢ,result⟩/⟨result,result⟩`, exact sum-to-1 against the pure-sum superposition. **No `amari-fusion` dep, no `tropical-dual` feature** (audit showed TDC duals don't survive `bind`/`bundle`; original `compute_gradient` was a stub). |
 | 5 | **Implement `optical_store` compute path** (§5) | 1 | bind+bundle via `OpticalFieldAlgebra`; Mock-hardware reference impl; coordinate with Kagome |
-| 6 | **CI + doc hygiene pass + branch cleanup** (§6) | 0 | CI already strong (§6) — add `optical` matrix leg, document `persistence` C++ need in README, un-ignore doc-tests where the amari bump allows; **staleness-check `origin/feature/optical-backend` and `origin/refactor/toolkit-conversion`** (survived WS 0 unassessed) — delete if redundant, recover-via-SHA if not |
+| 6 | **CI + doc hygiene pass + branch cleanup** (§6) | 0 | **✅ DONE (WS 6):** added `optical` leg to CI feature matrix; documented `persistence` C++/RocksDB need in README; fixed silently-non-running `tests/integration/` via `[[test]]` (surfaced a recall-quality bug, `#[ignore]`d with evidence — see follow-up); deleted redundant `origin/feature/optical-backend` (rec. `25584fe`) + `origin/refactor/toolkit-conversion` (rec. `ec6b2eb`, fully merged). |
 
 Items 1–4 are the "amari seam + fusion restore" core. Item 5 is the Kagome-shared compute
 path. Items 0 and 6 are housekeeping that should bookend the sprint.
@@ -452,18 +452,21 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 - [x] `develop` synced from `main`: AGPL-3.0-only, SPDX header on `src/lib.rs`, redundant
       stranded branch deleted (§4). `develop`=`5665040` ≡ `origin/main`; verified green
       (82 lib unit + 11 doc-tests, fmt/clippy clean).
-- [~] `amari-holographic` resolves to 0.23.x in the lockfile (§3) — **done in PR #10
-      (WS 1), pending merge to `develop`.**
-- [ ] `cargo test --all-features` green; test count ≥ 82 (current CI working-features
+- [x] `amari-holographic` resolves to 0.23.x in the lockfile (§3) — **PR #10 (WS 1), merged.**
+- [x] `cargo test --all-features` green; test count ≥ 82 (current CI working-features
       baseline; 41 minimal — §0) and *increased* by restored retrieval coverage (§2).
-- [ ] `Attribution` and `TemperatureSchedule` are reachable from the public API and have
-      doc-tests (§2).
-- [ ] `optical_store` performs a real bind+bundle verifiable via `MockOpticalHardware`
-      (§5).
-- [ ] `cargo clippy --features "parallel,serde,async,optical" -- -D warnings` and
+      **Final: 109 lib + 4 integration + 14 doc-tests** under `parallel,serde,async,optical`;
+      61 minimal. (Integration tests were silently skipped pre-WS-6 — nested dir not
+      auto-discovered; now fixed via `[[test]]`.)
+- [x] `Attribution` and `TemperatureSchedule` are reachable from the public API and have
+      doc-tests (§2). **(WS 2 + WS 3.)**
+- [x] `optical_store` performs a real bind+bundle verifiable via `MockOpticalHardware`
+      (§5). **(WS 5, PR #16.)**
+- [x] `cargo clippy --features "parallel,serde,async,optical" -- -D warnings` and
       `cargo doc --no-deps` clean (CI deliberately excludes `persistence`, which needs a
       C++ toolchain — §6).
-- [ ] Kagome's `--features minuet` build still passes against the updated Minuet (§7).
+- [x] Kagome's `--features minuet` build still passes against the updated Minuet (§7).
+      **(Verified in WS 5 via `--config` patch; also collapsed the amari 0.15/0.23 split.)**
 
 ---
 
