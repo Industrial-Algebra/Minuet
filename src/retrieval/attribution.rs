@@ -21,6 +21,16 @@ use amari_holographic::BindingAlgebra;
 
 use crate::error::{MinuetError, Result};
 
+/// Inner product on a [`BindingAlgebra`], recovered from the trait's
+/// `similarity` (cosine) and `norm` (Euclidean) primitives:
+/// `⟨a, b⟩ = similarity(a, b) · ‖a‖ · ‖b‖`.
+///
+/// Used by [`Attribution::compute_gradient`] for the projection-based exact
+/// attribution. Zero when either operand has zero norm.
+fn inner_product<A: BindingAlgebra>(a: &A, b: &A) -> f64 {
+    a.similarity(b) * a.norm() * b.norm()
+}
+
 /// Attribution information for a retrieval result.
 ///
 /// Produced by [`Attribution::compute`]. Contributions are normalized so that
@@ -218,21 +228,103 @@ impl<A: BindingAlgebra> Attribution<A> {
         })
     }
 
-    /// Compute attribution via algebra gradients.
+    /// Compute attribution via forward-mode dual (gradient) propagation over
+    /// the binding algebra.
     ///
-    /// Over a generic [`BindingAlgebra`] this falls back to the
-    /// similarity-based [`compute`](Self::compute): true gradient attribution
-    /// relies on the dual-number component of `TropicalDualClifford`, which a
-    /// generic algebra does not expose. The dual-number path is restored
-    /// behind the experimental `tropical-dual` feature (handoff §2, WS 4b);
-    /// this generic entry point exists so callers do not need a TDC dependency
-    /// to get provenance.
+    /// This is the *exact* attribution path, distinct from the similarity
+    /// heuristic [`compute`](Self::compute). For each registered binding
+    /// `bᵢ = keyᵢ ⊛ valueᵢ`, the retrieved contribution is
+    /// `rᵢ = query⁻¹ ⊛ bᵢ`. These `rᵢ` are the forward-mode Jacobian columns
+    /// `∂result/∂(presenceᵢ)` — i.e. how the retrieved superposition responds
+    /// to each store's presence, propagated through `bind`/`unbind` via the
+    /// geometric product's product rule.
+    ///
+    /// Attribution is the orthogonal projection of each `rᵢ` onto `result`:
+    ///
+    /// ```text
+    /// attribᵢ = ⟨rᵢ, result⟩ / ⟨result, result⟩
+    /// ```
+    ///
+    /// where `⟨a, b⟩ = similarity(a, b) · ‖a‖ · ‖b‖`. When `result` is the
+    /// raw retrieved superposition `Σᵢ rᵢ`, the attributions sum to exactly
+    /// `1.0` (the projection of a sum onto itself is exact). For overlapping
+    /// / non-orthogonal stores this is strictly more correct than `compute`,
+    /// whose cosine heuristic double-counts shared mass.
+    ///
+    /// # Implementation note (WS 4b)
+    ///
+    /// The pre-v0.3.0 code intended this via the dual-number component of
+    /// `TropicalDualClifford`, but (a) that path was a stub, and (b) audit
+    /// of `amari-fusion` 0.23 showed its `TropicalDualClifford` reinitializes
+    /// the dual representation inside `bind`/`unbind`/`bundle`, so duals do
+    /// *not* propagate through holographic ops there. This implementation
+    /// instead performs the equivalent forward-mode propagation directly
+    /// over [`BindingAlgebra`] (no `amari-fusion` dependency), which is exact
+    /// for the linear binding model. Propagation through the *nonlinear*
+    /// resonator cleanup (softmax-weighted projection) is the natural
+    /// extension and is left as future work; until then, pass the raw
+    /// superposition as `result` for the exactness guarantee.
     ///
     /// # Errors
     ///
-    /// Same failure conditions as [`compute`](Self::compute).
+    /// Returns [`MinuetError::Algebra`] if `query` cannot be unbound.
     pub fn compute_gradient(&self, query: &A, result: &A) -> Result<AttributionResult> {
-        self.compute(query, result)
+        if self.bindings.is_empty() {
+            return Ok(AttributionResult {
+                contributions: HashMap::new(),
+                top_contributors: Vec::new(),
+                total_mass: 0.0,
+                is_approximate: false,
+            });
+        }
+
+        let result_norm_sq = {
+            let n = result.norm();
+            n * n
+        };
+        // A zero-norm result has no direction to project onto.
+        if result_norm_sq <= 0.0 {
+            return Ok(AttributionResult {
+                contributions: HashMap::new(),
+                top_contributors: Vec::new(),
+                total_mass: 0.0,
+                is_approximate: false,
+            });
+        }
+
+        // r_i = query⁻¹ ⊛ b_i for each binding (the per-store retrieved
+        // contribution; failure is uniform in `query`'s invertibility).
+        //
+        // Every projection is retained — unlike `compute`, no threshold
+        // filtering is applied, because the exactness guarantee
+        // (Σ attribᵢ ≈ 1.0 against the raw superposition) requires the signed
+        // sum over *all* stores. Callers filter via
+        // [`AttributionResult::above_threshold`].
+        let mut contributions = HashMap::new();
+        let mut total_mass = 0.0;
+        for (store_id, binding) in &self.bindings {
+            let r_i = query.unbind(binding).map_err(MinuetError::algebra)?;
+            let proj = inner_product(&r_i, result) / result_norm_sq;
+            contributions.insert(*store_id, proj);
+            total_mass += proj;
+        }
+
+        // Note: against the raw superposition (result == Σ r_i) the projections
+        // already sum to ~1.0, so no renormalization is applied — that would
+        // destroy the exactness guarantee. `total_mass` reports the realized
+        // sum (≈1.0 against the raw superposition; <1.0 against a cleaned/
+        // orthogonal result).
+        let mut top_contributors: Vec<(u64, f64)> =
+            contributions.iter().map(|(&k, &v)| (k, v)).collect();
+        top_contributors.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+        top_contributors.truncate(self.max_attributions);
+
+        Ok(AttributionResult {
+            contributions,
+            top_contributors,
+            total_mass,
+            is_approximate: false,
+        })
     }
 
     /// Get the number of registered bindings.
@@ -456,5 +548,137 @@ mod tests {
         assert_eq!(original.top_contributors, decoded.top_contributors);
         assert_eq!(original.total_mass, decoded.total_mass);
         assert_eq!(original.is_approximate, decoded.is_approximate);
+    }
+
+    // ---- WS 4b: forward-mode dual (gradient) attribution ----
+
+    /// Helper: register `n` random (key, value) bindings, returning the keys
+    /// and values so tests can build the raw retrieved superposition.
+    fn register_random(
+        attr: &mut Attribution<TestAlgebra>,
+        n: usize,
+    ) -> (Vec<TestAlgebra>, Vec<TestAlgebra>) {
+        let mut keys = Vec::new();
+        let mut vals = Vec::new();
+        for i in 0..n {
+            let k = TestAlgebra::random_versor(2);
+            let v = TestAlgebra::random_versor(2);
+            attr.register(i as u64, k.bind(&v));
+            keys.push(k);
+            vals.push(v);
+        }
+        (keys, vals)
+    }
+
+    /// Core exactness guarantee: against the raw retrieved superposition
+    /// `r = Σᵢ query⁻¹⊛bᵢ`, the gradient attributions sum to ~1.0.
+    #[test]
+    fn gradient_attribution_sums_to_one() {
+        let mut attr = Attribution::<TestAlgebra>::new();
+        let (keys, _vals) = register_random(&mut attr, 5);
+        let query = keys[0].clone();
+
+        // r = Σᵢ query⁻¹⊛bᵢ — the *pure-sum* superposition (component_add),
+        // which is the idealization the exactness guarantee assumes. (A real
+        // memory trace uses `bundle`, a softmax-weighted average, against
+        // which the projections sum to < 1.)
+        let mut r = TestAlgebra::zero();
+        for (_id, binding) in &attr.bindings {
+            let r_i = query.unbind(binding).unwrap();
+            r = r.component_add(&r_i);
+        }
+
+        let result = attr.compute_gradient(&query, &r).unwrap();
+        assert!(
+            (result.total_mass - 1.0).abs() < 1e-6,
+            "gradient attributions must sum to 1.0 against the pure-sum superposition, got {}",
+            result.total_mass
+        );
+    }
+
+    /// A single binding must attribute ~1.0 to itself (it *is* the whole result).
+    #[test]
+    fn gradient_single_binding_is_total() {
+        let mut attr = Attribution::<TestAlgebra>::new();
+        let key = TestAlgebra::random_versor(2);
+        let val = TestAlgebra::random_versor(2);
+        attr.register(0, key.bind(&val));
+
+        let r = key.unbind(&attr.bindings[0].1).unwrap();
+        let result = attr.compute_gradient(&key, &r).unwrap();
+        assert!((result.contribution(0).unwrap() - 1.0).abs() < 1e-6);
+    }
+
+    /// Gradient attribution is energy-based: a store whose retrieved
+    /// contribution has larger magnitude attributes more than a smaller one.
+    /// (Contrast with `compute`, whose cosine heuristic is magnitude-blind.)
+    #[test]
+    fn gradient_attributes_larger_contribution_more() {
+        let mut attr = Attribution::<TestAlgebra>::new();
+        // Store 1: large value. Store 2: small value.
+        let key1 = TestAlgebra::random_versor(2);
+        let val1 = TestAlgebra::random_versor(2).component_scale(10.0);
+        attr.register(1, key1.bind(&val1));
+        let key2 = TestAlgebra::random_versor(2);
+        let val2 = TestAlgebra::random_versor(2).component_scale(0.1);
+        attr.register(2, key2.bind(&val2));
+
+        // Use a neutral query (identity-like) so neither store is favored by
+        // alignment; the magnitude difference should drive the attribution.
+        let query = TestAlgebra::identity();
+        let mut r = TestAlgebra::zero();
+        for (_id, binding) in &attr.bindings {
+            r = r.component_add(&query.unbind(binding).unwrap());
+        }
+        let result = attr.compute_gradient(&query, &r).unwrap();
+
+        let c1 = result.contribution(1).unwrap_or(0.0);
+        let c2 = result.contribution(2).unwrap_or(0.0);
+        assert!(
+            c1 > c2,
+            "larger-magnitude store must attribute more (energy-based): c1={c1} c2={c2}"
+        );
+    }
+
+    /// Gradient attribution is the orthogonal projection; it must match the
+    /// formula `⟨rᵢ, r⟩/⟨r,r⟩` computed independently (no double-counting of
+    /// shared mass, unlike the cosine heuristic in `compute`).
+    #[test]
+    fn gradient_matches_independent_projection() {
+        let mut attr = Attribution::<TestAlgebra>::new();
+        register_random(&mut attr, 4);
+        let query = TestAlgebra::random_versor(2);
+
+        let mut r = TestAlgebra::zero();
+        let mut r_is = Vec::new();
+        for (_id, binding) in &attr.bindings {
+            let r_i = query.unbind(binding).unwrap();
+            r_is.push(r_i.clone());
+            r = r.bundle(&r_i, 1.0).unwrap();
+        }
+        let r_norm_sq = r.norm() * r.norm();
+
+        let result = attr.compute_gradient(&query, &r).unwrap();
+        for (i, r_i) in r_is.iter().enumerate() {
+            let expected = inner_product(r_i, &r) / r_norm_sq;
+            let got = result.contribution(i as u64).unwrap();
+            assert!(
+                (got - expected).abs() < 1e-9,
+                "store {i}: gradient {got} must match projection {expected}"
+            );
+        }
+    }
+
+    /// A zero-norm result has no direction to project onto: no panic, empty
+    /// contributions.
+    #[test]
+    fn gradient_zero_result_is_empty() {
+        let mut attr = Attribution::<TestAlgebra>::new();
+        register_random(&mut attr, 3);
+        let query = TestAlgebra::random_versor(2);
+        let zero = TestAlgebra::zero();
+        let result = attr.compute_gradient(&query, &zero).unwrap();
+        assert!(result.contributions.is_empty());
+        assert_eq!(result.total_mass, 0.0);
     }
 }
