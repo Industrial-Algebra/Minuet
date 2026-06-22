@@ -12,16 +12,18 @@
 
 Named after Star Trek's first sentient hologram, Minuet provides memory that participates in cognition rather than merely serving it.
 
-## What's New in 0.3.0
+## What's New
 
-- **IA Conformance**: Relicensed to AGPL-3.0 dual-licensed, SPDX headers on all source files, ecosystem toolchain
-- **Code Quality**: Removed dead code, fixed all doc-tests (11 verified), expanded test coverage (57 tests total)
-- **Fixes**: `as_algebra()` stub resolved, clippy clean, persistence feature documented
-- **Benchmarks**: Proper holographic operation benchmarks (store/retrieve/shard/bind)
-- **Integration Tests**: End-to-end pipeline and capacity workflow tests
-- **Documentation**: CONTRIBUTING.md, HANDOFF.md, ROADMAP.md
+**0.4.0 — Kagome-readiness sprint.** Restores capability lost in the v0.3.0 tech-debt release and stands up the optical compute path the forthcoming microwave back-end Kagome accelerates:
 
-See the [CHANGELOG](CHANGELOG.md) for full details.
+- **Restored retrieval**: annealed `Temperature`/`TemperatureSchedule` schedules and substrate-agnostic `Attribution` (over `A: BindingAlgebra`), including **real forward-mode gradient attribution** (`compute_gradient` is no longer a stub).
+- **Temperature → resonator wiring**: `ResonatorRetriever::with_temperature` drives annealed cleanup from the restored types.
+- **Optical compute path**: `CheckpointedOpticalMemory::optical_store` is no longer a no-op — it binds and accumulates a `memory_trace`, with `measure_via_hardware()` for the display+measure round-trip.
+- **amari floor `^0.15` → `^0.23`** (currency + the transitive `amari-core` upgrade).
+
+See the [CHANGELOG](CHANGELOG.md) and `docs/HANDOFF-kagome-readiness.md` for full details.
+
+**0.3.0** relicensed to AGPL-3.0 (dual-licensed), added SPDX headers, fixed all doc-tests, and expanded benchmarks and integration tests.
 
 ## What is Holographic Memory?
 
@@ -38,8 +40,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-minuet = "0.2"
-amari-holographic = "0.15"
+minuet = "0.4"
+amari-holographic = "0.23"
 ```
 
 ### Basic Usage
@@ -72,6 +74,13 @@ fn main() -> MinuetResult<()> {
     Ok(())
 }
 ```
+
+> **Note on confidence:** the `confidence` value reflects Minuet's current bundling
+> implementation (`DenseTrace::add` accumulates via a softmax-weighted average, which
+> dilutes earlier bindings). An additive superposition path lands with
+> `amari-holographic` 0.24.0 — see the [CHANGELOG](CHANGELOG.md) and
+> [`Amari` PR #176](https://github.com/Industrial-Algebra/Amari/pull/176). The retrieved
+> *value* is correct regardless.
 
 ### Pipeline Composition
 
@@ -374,7 +383,7 @@ cargo run --example optical_expressions_demo --features optical
 
 ```toml
 [dependencies]
-minuet = { version = "0.2", features = ["optical"] }
+minuet = { version = "0.4", features = ["optical"] }
 ```
 
 | Feature | Description | Dependencies |
