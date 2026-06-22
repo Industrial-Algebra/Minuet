@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-22
+
+The **Kagome-readiness sprint**: restore capability lost in the v0.3.0 tech-debt release,
+close the amari version skew, and stand up the optical compute path the (forthcoming)
+microwave back-end Kagome accelerates. See `docs/HANDOFF-kagome-readiness.md` for the
+full sprint record.
+
+### Added
+
+- **Annealed temperature schedules** (`retrieval::temperature`): the `Temperature` enum
+  (`Soft`/`Hard`/`Beta`/`Annealed`) and `TemperatureSchedule` (constant/linear/exponential/
+  cosine) deleted in v0.3.0, restored near-verbatim and re-exported into the prelude.
+  Drives resonator cleanup from a soft (broad basin) start toward a hard (tropical) finish
+  across iterations — directly attacking the phase-noise error budget a noisy back-end
+  faces. (WS 2, PR #11)
+- **Attribution / provenance tracking** (`retrieval::Attribution<A>`): restored and
+  re-expressed generically over `A: BindingAlgebra` (the pre-v0.3.0 code was hard-wired to
+  `TropicalDualClifford`). `AttributionResult`, `AttributionQuery`, and the narrative
+  types (`RetrievalExplanation`, `ExplanationFactor`, `FactorRelation`) ship with it.
+  (WS 3, PR #13)
+- **Real dual-number gradient attribution**: `Attribution::compute_gradient` is no longer a
+  similarity-fallback stub — it computes the exact orthogonal projection
+  `attribᵢ = ⟨rᵢ, result⟩ / ⟨result, result⟩` over the binding algebra, summing to ~1.0
+  against the pure-sum superposition. Implemented on `amari-core` (no `amari-fusion`
+  dependency). (WS 4b, PR #15)
+- **Temperature → resonator wiring**: `ResonatorRetriever::with_temperature` and
+  `with_temperature_schedule` configure cleanup annealing from the restored temperature
+  types. `Temperature::to_resonator_config` is the translation seam. (WS 4, PR #14)
+- **Optical compute path**: `CheckpointedOpticalMemory::optical_store` is no longer a no-op.
+  It binds `key ⊛ value` and accumulates into an additive `memory_trace` superposition, with
+  a new `measure_via_hardware()` for the display+measure round-trip. This is the compute a
+  physical back-end (optical or Kagome's microwave resonators) accelerates. (WS 5, PR #16)
+- **`[[test]]` discovery** for `tests/integration/end_to_end.rs` — it was nested one dir
+  deep and silently not running in CI; now it runs. (WS 6, PR #18)
+- `optical` standalone leg in the CI feature-combination matrix. (WS 6, PR #18)
+
+### Changed
+
+- **`amari-holographic` floor bumped `^0.15` → `^0.23`** (resolves `amari-holographic`
+  0.23.0 + the transitive `amari-core` 0.23.0 upgrade). Zero source changes; the
+  `amari-holographic` optical surface is byte-identical 0.15↔0.23, so the real payload is
+  the `amari-core` upgrade (7 new modules) plus currency. (WS 1, PR #10)
+- **`develop` re-synced from `main`** as the AGPL/conformance baseline; redundant stranded
+  branches deleted. (WS 0)
+- `DenseTrace::add` accumulates via `bundle(beta=1.0)` (unchanged) — a confirmed
+  recall-quality regression for ≥3 items is documented and the affected integration test
+  is `#[ignore]`d with an evidence note. The fix lives upstream: an additive `superpose`
+  method on `BindingAlgebra`, targeting `amari-holographic` 0.24.0 (see
+  `Amari/docs/plans/2026-06-21-additive-superpose-binding-algebra.md`). Minuet 0.4.x will
+  adopt it once the amari floor moves.
+
+### Fixed
+
+- Corrected the Kagome-readiness handoff's central §3 premise (the amari bump does *not*
+  "unlock" the optical-field algebra — those symbols were present at 0.15.1; the bump is for
+  currency + the `amari-core` upgrade). (PR #9, PR #17)
+- CI now runs with the integration tests actually discovered; pre-existing
+  `unused-variable` warning in the integration test fixed so the test binary compiles under
+  `RUSTFLAGS=-Dwarnings`. (WS 6, PR #18)
+
+### Documentation
+
+- Added `docs/HANDOFF-kagome-readiness.md` — the full sprint record (workstreams 0–6,
+  locked decisions, verification checklist). (PR #9)
+- README feature-flags table now documents the `persistence` feature's C++/RocksDB
+  toolchain requirement (excluded from `full` and CI). (WS 6, PR #18)
+
+### Notes
+
+- GPU acceleration of the optical compute path is deferred to `amari-gpu` 0.25.0 (which
+  integrates Borsalino as a feature gate upstream); Minuet takes no direct GPU dependency.
+- The optical compute path is **store-side**: retrieval still resolves against the logical
+  (symbolic) state. Wiring retrieval to prefer the optical trace is future work, relevant
+  once real hardware (Kagome) accelerates it.
+- Kagome's `--features minuet` build is verified against this release.
+
 ## [0.3.0] - 2026-05-26
 
 ### Added
@@ -162,7 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires Rust nightly (for future `amari-gpu` compatibility)
 - Generic over any `BindingAlgebra` implementation
 
+[0.4.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.4.0
 [0.3.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.3.0
 [0.2.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.2.0
 [0.1.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.1.0
-[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.4.0...HEAD
