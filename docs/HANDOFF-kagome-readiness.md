@@ -101,6 +101,41 @@ Recommended before its PR: `git rebase develop` so it targets `develop` (normal 
 > and `origin/refactor/toolkit-conversion` still exist. They were **not** part of WS 0 and
 > are not deleted. Worth a staleness check in WS 6 / housekeeping.
 
+### GPU acceleration — deferred to `amari-gpu` 0.25.0 (no Minuet Borsalino dep)
+
+Assessed during the sprint (2026-06-21) whether Minuet should integrate
+[`Borsalino`](../Borsalino) directly for GPU acceleration of the optical compute path
+(WS 5). **Decision: no — defer to `amari-gpu` 0.25.0.** Minuet's GPU story flows
+`amari-gpu` → `amari-holographic` → Minuet, the same layering as everything else Minuet
+consumes; when 0.25.0 lands and Minuet bumps its amari floor, the WS 5 `optical_store`
+compute path (bind/bundle via `OpticalFieldAlgebra`) gets GPU acceleration for free —
+with no Minuet-side kernel code.
+
+Evidence backing the deferral (primary-source):
+- **Borsalino v0.2.1 is a generic GPU-dispatch layer**, not an algebra layer: `GpuBackend`
+  trait, WGSL → Metal/Vulkan via `naga`, buffers/pipelines/dispatch/readback, plus a
+  `verify` feature for GPU *safety* properties (karpal). It has **no holographic knowledge**
+  (no `bind`/`bundle`/`similarity`/`OpticalRotorField`) — it sits *below* where algebra
+  kernels live. Its own `docs/verification-integration.md` scopes it as "the unsafe
+  boundary layer"; algebraic laws are amari/Schubert's job.
+- **Borsalino's verification is not yet release-ready** — `dispatch_verified()`/`Proven<>`
+  gates, Miri, Kani, and `amari-flynn` are all open per its `VERIFICATION_ROADMAP_SUPPLEMENT.md`,
+  and its "real IA kernel (geometric product)" item is still strategic-tier.
+- **`amari-gpu` (separate, `wgpu`) is not a dep of `amari-holographic` 0.23** (what Minuet
+  pulls) — so Minuet currently reaches *no* GPU path; the dep graph has no Borsalino/amari-gpu
+  leg to short-circuit.
+- **`amari-gpu` 0.25.0 (announced)** is a sweeping update: `wgpu` to current **and**
+  Borsalino integrated as a feature gate. That is the correct, upstream integration point.
+
+So a Minuet-side Borsalino dep would (a) put holographic WGSL kernels in the wrong layer
+(Minet instead of `amari-gpu`), (b) duplicate the 0.25.0 upstream work, (c) pull a
+pre-release dependency, and (d) likely be re-architected when 0.25.0 lands. The one narrow
+Minuet-resident reading considered — a `BorsalinoOpticalHardware` simulation backend
+alongside `MockOpticalHardware` — was rejected for the same reasons (and because compute
+acceleration of `bind`/`bundle` is `amari-gpu`'s job regardless). This reaffirms the
+prior Kagome-session decision (2026-06-19): GPU kernels for the holographic algebra belong
+in `amari-gpu` (lowest reusable layer); Borsalino stays out of Minuet's update.
+
 ---
 
 ## 1. Why this sprint
@@ -181,6 +216,16 @@ RABBIT_HOLE report's "moved into amari-holographic proper" was only half-true.
 - **Experimental TDC path** — behind an *additive* feature (e.g. `tropical-dual`, pulling
   `amari-fusion`), restore the `TropicalDualClifford`-specific resonator API as an opt-in.
   Additive only — never removes the generic path — per IA feature conventions.
+
+  > **Revised in WS 4b (2026-06-20).** The `tropical-dual`/`amari-fusion` path was
+  > **dropped** after audit: `amari-fusion` 0.23's `TropicalDualClifford` reinitializes its
+  > dual representation inside `bind`/`unbind`/`bundle` (they all end in `from_clifford()`,
+  > which discards input duals), so duals do **not** propagate through holographic ops —
+  > true gradient-through-bundling attribution is not achievable via it as-is. Instead, WS 4b
+  > implemented **real forward-mode dual (gradient) attribution directly over
+  > `BindingAlgebra`** (on amari-core, no `amari-fusion` dep). See PR #15 and §8 row 4b.
+  > The pre-v0.3.0 `compute_gradient` was itself only a stub ("fall back to
+  > similarity-based attribution"), so nothing of value was lost.
 
 **Rationale.** One default algebra path (`BindingAlgebra`) keeps store and retrievers
 coherent and substrate-agnostic (what Kagome needs), while the experimental feature
@@ -387,7 +432,7 @@ the synced AGPL/conformance base; this handoff branch is rebased onto `develop` 
 | 2 | **Restore `temperature.rs`** (§2-B) | 0 | near-verbatim; pure Minuet, no new dep |
 | 3 | **Re-express `Attribution` over `BindingAlgebra`** (§2-B) | 1 | port `attribution.rs` from `TropicalDualClifford` to generic `A` |
 | 4 | **Wire annealed temperature into `ResonatorRetriever`** (§2-B) | 2,3 | close the loop: annealed cleanup as a retriever option |
-| 4b | **Experimental `tropical-dual` feature** (§2) | 1,4 | additive feature pulling `amari-fusion`; restore the `TropicalDualClifford` resonator API as opt-in; default path unchanged |
+| 4b | **Real dual-number gradient attribution** (§2, revised) | 1,4 | **DONE (PR #15):** real forward-mode dual attribution on amari-core — `attrib_i = ⟨rᵢ,result⟩/⟨result,result⟩`, exact sum-to-1 against the pure-sum superposition. **No `amari-fusion` dep, no `tropical-dual` feature** (audit showed TDC duals don't survive `bind`/`bundle`; original `compute_gradient` was a stub). |
 | 5 | **Implement `optical_store` compute path** (§5) | 1 | bind+bundle via `OpticalFieldAlgebra`; Mock-hardware reference impl; coordinate with Kagome |
 | 6 | **CI + doc hygiene pass + branch cleanup** (§6) | 0 | CI already strong (§6) — add `optical` matrix leg, document `persistence` C++ need in README, un-ignore doc-tests where the amari bump allows; **staleness-check `origin/feature/optical-backend` and `origin/refactor/toolkit-conversion`** (survived WS 0 unassessed) — delete if redundant, recover-via-SHA if not |
 
@@ -428,9 +473,11 @@ path. Items 0 and 6 are housekeeping that should bookend the sprint.
 2. **amari seam (§3):** bump `amari-holographic` to `"0.23"` as the first code PR. ✅
    *(Decision holds; rationale revised — see §0/§3: the bump brings the `amari-core`
    transitive upgrade + currency, not the optical-symbol "unlock" the draft claimed.)*
-3. **Fusion restore (§2):** generic re-expression over `BindingAlgebra` (option B), **plus**
-   an optional experimental `tropical-dual` feature restoring the `TropicalDualClifford`
-   fusion API as an additive opt-in. ✅
+3. **Fusion restore (§2):** generic re-expression over `BindingAlgebra` (option B). ✅
+   *(Revised in WS 4b: the planned optional `tropical-dual` feature / `amari-fusion` dep
+   was **dropped** — audit showed TDC duals don't propagate through `bind`/`bundle`, and
+   the original `compute_gradient` was a stub. Instead, WS 4b delivers real forward-mode
+   gradient attribution on amari-core. See §0 "GPU acceleration" note, §2, §8 row 4b, PR #15.)*
 4. **`optical_store` (§5):** implement behind the `optical` feature with a
    `MockOpticalHardware` reference impl, **in coordination with Kagome** (whose
    `MicrowaveField` ports `OpticalRotorField`). ✅
