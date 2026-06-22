@@ -3,7 +3,7 @@
 //! Integration tests for the optical module.
 
 use super::*;
-use amari_holographic::optical::{CodebookConfig, LeeEncoderConfig};
+use amari_holographic::optical::{CodebookConfig, LeeEncoderConfig, OpticalFieldAlgebra};
 use std::time::Duration;
 use tempfile::tempdir;
 
@@ -381,4 +381,148 @@ fn test_journal_save_load() {
     // Load
     let loaded = MemoryJournal::load(&path).unwrap();
     assert_eq!(loaded.ops.len(), 1);
+}
+
+// ---- WS 5: optical_store compute path (bind + bundle) ----
+
+/// Helper: build a `CheckpointedOpticalMemory` on a `MockOpticalHardware`.
+fn make_memory(dir: &tempfile::TempDir) -> CheckpointedOpticalMemory<MockOpticalHardware> {
+    let hardware = MockOpticalHardware::new(42);
+    let config = CheckpointConfig {
+        journal_path: dir.path().join("journal.bin"),
+        interval: Duration::from_secs(3600),
+        ..Default::default()
+    };
+    CheckpointedOpticalMemory::new(
+        hardware,
+        test_encoder_config(),
+        test_codebook_config(),
+        config,
+    )
+    .expect("memory constructs")
+}
+
+/// A freshly-constructed memory's trace is the binding identity (no stores yet).
+/// This is the baseline against which `store` is shown to accumulate.
+#[test]
+fn ws5_memory_trace_starts_at_identity() {
+    let dir = tempdir().unwrap();
+    let memory = make_memory(&dir);
+
+    let algebra = OpticalFieldAlgebra::new(test_encoder_config().dimensions);
+    let identity = algebra.identity();
+    // Cosine similarity 1.0 against the identity it was initialized to.
+    assert!((algebra.similarity(memory.memory_trace(), &identity) - 1.0).abs() < 1e-5);
+}
+
+/// `optical_store` is no longer a no-op: after one `store`, the trace differs
+/// from the identity (a real bind+bundle happened).
+#[test]
+fn ws5_store_writes_the_trace() {
+    let dir = tempdir().unwrap();
+    let mut memory = make_memory(&dir);
+
+    let algebra = OpticalFieldAlgebra::new(test_encoder_config().dimensions);
+    let identity = algebra.identity();
+    assert!(
+        (algebra.similarity(memory.memory_trace(), &identity) - 1.0).abs() < 1e-5,
+        "baseline: trace starts at identity"
+    );
+
+    memory
+        .store(
+            SymbolicExpression::role_filler("AGENT", "John"),
+            SymbolicExpression::role_filler("ACTION", "run"),
+        )
+        .unwrap();
+
+    assert!(
+        algebra.similarity(memory.memory_trace(), &identity) < 0.999,
+        "trace must change after a store (bind+bundle ran)"
+    );
+}
+
+/// The trace accumulates across stores (superposition): trace after two stores
+/// differs from trace after one.
+#[test]
+fn ws5_trace_accumulates_across_stores() {
+    let dir = tempdir().unwrap();
+    let mut memory = make_memory(&dir);
+
+    memory
+        .store(
+            SymbolicExpression::role_filler("AGENT", "John"),
+            SymbolicExpression::role_filler("ACTION", "run"),
+        )
+        .unwrap();
+    let trace_after_one = memory.memory_trace().clone();
+
+    memory
+        .store(
+            SymbolicExpression::role_filler("AGENT", "Mary"),
+            SymbolicExpression::role_filler("ACTION", "walk"),
+        )
+        .unwrap();
+    let trace_after_two = memory.memory_trace().clone();
+
+    let algebra = OpticalFieldAlgebra::new(test_encoder_config().dimensions);
+    assert!(
+        algebra.similarity(&trace_after_one, &trace_after_two) < 0.999,
+        "trace must accumulate: two stores differ from one"
+    );
+}
+
+/// The bound `key ⊛ value` is genuinely present in the trace: the trace is more
+/// similar to `key ⊛ value` than to an unrelated random field. This is the core
+/// "the compute path does a real bind" proof (§9 checklist).
+#[test]
+fn ws5_bound_key_value_is_present_in_trace() {
+    let dir = tempdir().unwrap();
+    let mut memory = make_memory(&dir);
+
+    let key_expr = SymbolicExpression::role_filler("AGENT", "John");
+    let value_expr = SymbolicExpression::role_filler("ACTION", "run");
+    memory.store(key_expr.clone(), value_expr.clone()).unwrap();
+
+    // Recover the bound field the trace was built from.
+    let key_field = memory.instantiate(&key_expr).unwrap();
+    let value_field = memory.instantiate(&value_expr).unwrap();
+    let algebra = OpticalFieldAlgebra::new(test_encoder_config().dimensions);
+    let bound = algebra.bind(&key_field, &value_field);
+
+    let sim_to_bound = algebra.similarity(memory.memory_trace(), &bound);
+    let sim_to_random = algebra.similarity(memory.memory_trace(), &algebra.random(99));
+
+    assert!(sim_to_bound > sim_to_random,
+        "trace must contain key⊛value (sim_to_bound={sim_to_bound}) more than random (sim_to_random={sim_to_random})");
+}
+
+/// `measure_via_hardware` round-trips the trace through `MockOpticalHardware`:
+/// it returns a measurement whose mode count matches the hardware's mode count
+/// and whose total intensity is non-negative. (Mock simulates the physics; we
+/// assert the round-trip completes and is well-formed, not a specific intensity.)
+#[test]
+fn ws5_measure_via_hardware_roundtrips() {
+    let dir = tempdir().unwrap();
+    let mut memory = make_memory(&dir);
+
+    // An empty (identity) trace still encodes + measures.
+    let m0 = memory.measure_via_hardware().unwrap();
+    assert!(!m0.mode_amplitudes.is_empty());
+    assert!(m0.total_intensity >= 0.0);
+
+    memory
+        .store(
+            SymbolicExpression::role_filler("AGENT", "John"),
+            SymbolicExpression::role_filler("ACTION", "run"),
+        )
+        .unwrap();
+
+    let m1 = memory.measure_via_hardware().unwrap();
+    assert_eq!(
+        m1.mode_amplitudes.len(),
+        m0.mode_amplitudes.len(),
+        "mode count is fixed by the hardware"
+    );
+    assert!(m1.total_intensity >= 0.0);
 }

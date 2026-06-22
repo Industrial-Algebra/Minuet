@@ -17,12 +17,12 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use amari_holographic::optical::{
-    CodebookConfig, GeometricLeeEncoder, LeeEncoderConfig, OpticalCodebook, OpticalFieldAlgebra,
-    OpticalRotorField, SymbolId,
+    BinaryHologram, CodebookConfig, GeometricLeeEncoder, LeeEncoderConfig, OpticalCodebook,
+    OpticalFieldAlgebra, OpticalRotorField, SymbolId,
 };
 
 use super::fingerprint::{FingerprintValidation, TMatrixFingerprint};
-use super::hardware::{HardwareCalibration, HardwareError, OpticalHardware};
+use super::hardware::{HardwareCalibration, HardwareError, OpticalHardware, OpticalMeasurement};
 use super::journal::{
     CompactedMemoryState, JournalError, MemoryJournal, MemoryOp, StoredAssociation,
 };
@@ -121,6 +121,15 @@ pub struct CheckpointedOpticalMemory<H: OpticalHardware> {
     codebook: OpticalCodebook,
     calibration: Option<HardwareCalibration>,
 
+    /// Accumulated holographic memory trace (the optical compute state).
+    ///
+    /// Built by [`optical_store`](Self::optical_store): each `store(key, value)`
+    /// binds `key ⊛ value` and bundles it into this superposition. Initialized
+    /// to the binding identity (the no-op element). This is the path a physical
+    /// backend (optical or Kagome's microwave resonators) accelerates; until
+    /// WS 5 it was a deliberate no-op. See handoff §5.
+    memory_trace: OpticalRotorField,
+
     // === Logical State (derived from journal) ===
     /// Current in-memory state (for fast retrieval).
     logical_state: CompactedMemoryState,
@@ -143,6 +152,7 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
         checkpoint_config: CheckpointConfig,
     ) -> Result<Self, MemoryError> {
         let algebra = OpticalFieldAlgebra::new(hardware.dimensions());
+        let memory_trace = algebra.identity();
         let encoder = GeometricLeeEncoder::new(encoder_config.clone());
         let codebook = OpticalCodebook::new(codebook_config.clone());
 
@@ -155,6 +165,7 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
             encoder,
             codebook,
             calibration: None,
+            memory_trace,
             logical_state,
             journal,
             unsaved_ops: Vec::new(),
@@ -182,6 +193,7 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
         // Create encoder
         let encoder = GeometricLeeEncoder::new(journal.encoder_config.clone());
         let algebra = OpticalFieldAlgebra::new(hardware.dimensions());
+        let memory_trace = algebra.identity();
 
         let mut memory = Self {
             hardware,
@@ -189,6 +201,7 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
             encoder,
             codebook,
             calibration: None,
+            memory_trace,
             logical_state,
             journal,
             unsaved_ops: Vec::new(),
@@ -222,7 +235,7 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
         let value_field = self.instantiate(&value)?;
 
         // 3. Optical store (bind key with value, add to memory)
-        self.optical_store(&key_field, &value_field)?;
+        self.optical_store(&key_field, &value_field);
 
         // 4. Update logical state
         let assoc = StoredAssociation {
@@ -497,7 +510,10 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
         Ok(())
     }
 
-    fn instantiate(&mut self, expr: &SymbolicExpression) -> Result<OpticalRotorField, MemoryError> {
+    pub(crate) fn instantiate(
+        &mut self,
+        expr: &SymbolicExpression,
+    ) -> Result<OpticalRotorField, MemoryError> {
         match expr {
             SymbolicExpression::Symbol(id) => self
                 .codebook
@@ -522,20 +538,55 @@ impl<H: OpticalHardware> CheckpointedOpticalMemory<H> {
         }
     }
 
-    #[allow(clippy::unused_self)]
-    #[allow(clippy::unnecessary_wraps)]
-    fn optical_store(
-        &mut self,
-        _key: &OpticalRotorField,
-        _value: &OpticalRotorField,
-    ) -> Result<(), MemoryError> {
-        // In a full implementation, this would:
-        // 1. Bind key with value to create memory trace
-        // 2. Bundle with existing memory (superposition)
-        // 3. Optionally display and measure for resonator cleanup
-        //
-        // For now, we rely on the logical state for retrieval
-        Ok(())
+    /// Bind `key ⊛ value` into the accumulated optical memory trace.
+    ///
+    /// This is the optical **compute path** (WS 5): previously a deliberate
+    /// no-op ("ship persistence first, fill compute later"), it now performs
+    /// the real holographic binding. Each call binds `key` with `value` and
+    /// bundles the result into [`memory_trace`](Self::memory_trace) as a
+    /// superposition — exactly the computation a physical backend (optical
+    /// or Kagome's microwave resonators) accelerates.
+    ///
+    /// The accumulation is additive over amplitude: `trace' = bundle([trace, key⊛value], [1, 1])`,
+    /// which grows the per-mode amplitude as more items are stored (the
+    /// standard holographic-memory capacity/strength trade-off).
+    fn optical_store(&mut self, key: &OpticalRotorField, value: &OpticalRotorField) {
+        let binding = self.algebra.bind(key, value);
+        self.memory_trace = self
+            .algebra
+            .bundle(&[self.memory_trace.clone(), binding], &[1.0, 1.0]);
+    }
+
+    /// The accumulated holographic memory trace (optical compute state).
+    ///
+    /// Starts at the binding identity and accumulates one bound superposition
+    /// per [`store`](Self::store). A retrieval path that prefers the optical
+    /// trace over the logical (symbolic) state can read this.
+    #[must_use]
+    pub fn memory_trace(&self) -> &OpticalRotorField {
+        &self.memory_trace
+    }
+
+    /// Round-trip the current memory trace through the hardware and return the
+    /// measurement.
+    ///
+    /// Encodes [`memory_trace`](Self::memory_trace) to a `BinaryHologram`,
+    /// drives the hardware (`display`), and reads back the coupled-mode
+    /// intensities (`measure`). This is the optional display+measure cleanup
+    /// step from handoff §5: on a physical backend the interference in the
+    /// optical/microwave channel cleans up the superposition, and the returned
+    /// measurement is the hardware-computed signal. On `MockOpticalHardware`
+    /// (crate::optical::MockOpticalHardware) it is a software simulation of that round-trip.
+    ///
+    /// Errors propagate hardware failures (not-ready, dimension mismatch, no
+    /// pattern displayed).
+    pub fn measure_via_hardware(&mut self) -> Result<OpticalMeasurement, MemoryError> {
+        let hologram: BinaryHologram = self.encoder.encode(&self.memory_trace);
+        self.hardware
+            .display(&hologram)
+            .map_err(MemoryError::Hardware)?;
+        let measurement = self.hardware.measure().map_err(MemoryError::Hardware)?;
+        Ok(measurement)
     }
 }
 
