@@ -4,7 +4,7 @@ version = "0.4.0"
 edition = "2021"
 # Requires nightly for amari-gpu compatibility
 description = "Holographic memory systems built on amari-holographic — the optical table for holographic computing"
-license = "AGPL-3.0-only"
+license = "Apache-2.0"
 repository = "https://github.com/industrial-algebra/Minuet"
 documentation = "https://docs.rs/minuet"
 keywords = ["holographic", "memory", "hyperdimensional", "associative", "optical"]

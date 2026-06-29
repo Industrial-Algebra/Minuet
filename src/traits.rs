@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Industrial Algebra
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 //! Core traits for Minuet holographic memory systems.
 //!
 //! These traits provide the abstraction layer between domain applications

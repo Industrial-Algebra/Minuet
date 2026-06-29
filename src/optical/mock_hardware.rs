@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Industrial Algebra
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 //! Mock optical hardware for testing without physical devices.
 //!
 //! `MockOpticalHardware` simulates the behavior of a DMD + MMF optical system
@@ -29,13 +29,13 @@ use super::now_timestamp;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```rust
 /// use minuet::optical::MockOpticalHardware;
 ///
 /// let mut hw = MockOpticalHardware::new(42);
-/// assert!(hw.is_ready());
+/// assert_eq!(hw.seed(), 42);
 ///
-/// // Simulate T-matrix drift
+/// // Simulate T-matrix drift between calibrations.
 /// hw.drift_t_matrix(0.1);
 /// ```
 pub struct MockOpticalHardware {
