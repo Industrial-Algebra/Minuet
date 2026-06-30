@@ -70,6 +70,10 @@ full = ["parallel", "serde", "async", "optical"]
 name = "end_to_end"
 path = "tests/integration/end_to_end.rs"
 
+[[test]]
+name = "stress"
+path = "tests/stress/stress.rs"
+
 # Examples with feature requirements
 [[example]]
 name = "optical_memory_demo"
