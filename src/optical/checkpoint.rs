@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Industrial Algebra
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 //! Checkpointed optical memory with journal-based persistence.
 //!
 //! `CheckpointedOpticalMemory` provides a holographic memory system with:
@@ -88,14 +88,22 @@ impl CheckpointConfig {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```no_run
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// use minuet::optical::*;
+/// # use amari_holographic::optical::{LeeEncoderConfig, CodebookConfig};
 ///
 /// let hardware = MockOpticalHardware::new(42);
+/// let encoder_config = LeeEncoderConfig {
+///     carrier_frequency: 0.25,
+///     carrier_angle: 0.0,
+///     dimensions: (256, 256),
+/// };
+/// let codebook_config = CodebookConfig { dimensions: (256, 256), base_seed: 42 };
 /// let mut memory = CheckpointedOpticalMemory::new(
 ///     hardware,
-///     LeeEncoderConfig::default(),
-///     CodebookConfig::default(),
+///     encoder_config,
+///     codebook_config,
 ///     CheckpointConfig::default(),
 /// )?;
 ///
@@ -110,8 +118,10 @@ impl CheckpointConfig {
 ///     println!("Found: {:?} (similarity: {:.2})", result.value, result.similarity);
 /// }
 ///
-/// // Checkpoint
+/// // Checkpoint (saves to journal)
 /// memory.checkpoint()?;
+/// # Ok(())
+/// # };
 /// ```
 pub struct CheckpointedOpticalMemory<H: OpticalHardware> {
     // === Optical Backend ===

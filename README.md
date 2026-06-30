@@ -14,6 +14,8 @@ Named after Star Trek's first sentient hologram, Minuet provides memory that par
 
 ## What's New
 
+**0.5.0 — Relicensed to Apache-2.0.** Corrects the AGPL-3.0 licensing from v0.3.0/v0.4.0 (AGPL's network-use clause created enterprise adoption barriers). Apache-2.0 maximizes adoption while preserving attribution and the patent grant; contributions are covered by the [CLA](https://github.com/Industrial-Algebra/.github/blob/main/CLA.md). Previously-published AGPL versions remain on crates.io.
+
 **0.4.0 — Kagome-readiness sprint.** Restores capability lost in the v0.3.0 tech-debt release and stands up the optical compute path the forthcoming microwave back-end Kagome accelerates:
 
 - **Restored retrieval**: annealed `Temperature`/`TemperatureSchedule` schedules and substrate-agnostic `Attribution` (over `A: BindingAlgebra`), including **real forward-mode gradient attribution** (`compute_gradient` is no longer a stub).
@@ -404,6 +406,8 @@ minuet = { version = "0.4", features = ["optical"] }
 
 ## Documentation
 
+- [Getting Started with Holographic Memory](docs/getting-started.md) - Zero-to-running guide
+- [Benchmarks](BENCHMARKS.md) - Performance measurements
 - [API Reference](docs/API.md) - Complete API documentation
 - [docs.rs](https://docs.rs/minuet) - Generated rustdoc
 
@@ -466,7 +470,7 @@ Rust **nightly** is required. This enables compatibility with `amari-gpu` for fu
 
 ## License
 
-MIT OR Apache-2.0
+Apache-2.0
 
 ## References
 

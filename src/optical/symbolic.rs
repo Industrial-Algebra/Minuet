@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Industrial Algebra
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 //! Symbolic expression types for hardware-independent memory representation.
 //!
 //! These expressions can be serialized, transmitted, and instantiated on any
@@ -87,7 +87,7 @@ impl From<OrderedFloat<f32>> for f32 {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rust
 /// use minuet::optical::SymbolicExpression;
 ///
 /// // Create atomic symbols
@@ -129,7 +129,8 @@ impl SymbolicExpression {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```rust
+    /// # use minuet::optical::SymbolicExpression;
     /// let expr = SymbolicExpression::symbol("AGENT");
     /// ```
     pub fn symbol(name: impl Into<String>) -> Self {
@@ -140,7 +141,8 @@ impl SymbolicExpression {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```rust
+    /// # use minuet::optical::SymbolicExpression;
     /// let bound = SymbolicExpression::bind(
     ///     SymbolicExpression::symbol("role"),
     ///     SymbolicExpression::symbol("filler"),
@@ -154,7 +156,8 @@ impl SymbolicExpression {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```rust
+    /// # use minuet::optical::SymbolicExpression;
     /// let bundle = SymbolicExpression::bundle(vec![
     ///     (1.0, SymbolicExpression::symbol("primary")),
     ///     (0.5, SymbolicExpression::symbol("secondary")),
@@ -187,7 +190,8 @@ impl SymbolicExpression {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```rust
+    /// # use minuet::optical::SymbolicExpression;
     /// // These are equivalent:
     /// let a = SymbolicExpression::role_filler("AGENT", "John");
     /// let b = SymbolicExpression::bind(
