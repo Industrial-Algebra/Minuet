@@ -406,6 +406,8 @@ minuet = { version = "0.4", features = ["optical"] }
 
 ## Documentation
 
+- [Getting Started with Holographic Memory](docs/getting-started.md) - Zero-to-running guide
+- [Benchmarks](BENCHMARKS.md) - Performance measurements
 - [API Reference](docs/API.md) - Complete API documentation
 - [docs.rs](https://docs.rs/minuet) - Generated rustdoc
 
