@@ -73,6 +73,7 @@ path = "tests/integration/end_to_end.rs"
 [[test]]
 name = "stress"
 path = "tests/stress/stress.rs"
+required-features = ["optical"]
 
 # Examples with feature requirements
 [[example]]
