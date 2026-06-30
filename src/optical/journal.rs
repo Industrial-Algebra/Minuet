@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Industrial Algebra
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 //! Memory operation journal for checkpoint persistence.
 //!
 //! The journal provides append-only logging of memory operations, enabling:

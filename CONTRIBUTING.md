@@ -1,22 +1,20 @@
 # Contributing to Minuet
 
 Thank you for your interest in contributing! Minuet is an Industrial Algebra
-project, dual-licensed under AGPL v3 and a commercial license.
+project, licensed under **Apache-2.0**.
 
 ## Contributor License Agreement (CLA)
 
-Minuet is dual-licensed (AGPL v3 + commercial). To enable this model,
-**all contributors must sign a Contributor License Agreement (CLA)**.
-
-The CLA grants Industrial Algebra the right to relicense your contributions
-under the commercial license, while you retain full copyright ownership of
-your contributions. Without a CLA, your contributions can only be used under
-AGPL v3 terms, which would prevent Industrial Algebra from offering a
-commercial license for the combined work.
+All contributors must sign the [Contributor License Agreement
+(CLA)](https://github.com/Industrial-Algebra/.github/blob/main/CLA.md). The
+CLA grants Industrial Algebra a copyright license to your contributions and the
+right to relicense them, while you retain full copyright ownership of your
+work. It also provides a patent grant with a retaliation clause. Signing once
+covers all Industrial Algebra projects.
 
 ### How to Sign
 
-1. Download the CLA from: https://industrial-algebra.org/cla
+1. Read the CLA: https://github.com/Industrial-Algebra/.github/blob/main/CLA.md
 2. Sign and email to: cla@industrial-algebra.org
 3. Include your GitHub username in the email
 
@@ -75,4 +73,5 @@ cargo fmt --all --check
 ## License
 
 By contributing, you agree that your contributions will be licensed under
-the same dual-licensing model as the project (AGPL v3 + commercial).
+**Apache-2.0**, and that you have signed the CLA above granting Industrial
+Algebra the rights described therein.

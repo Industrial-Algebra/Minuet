@@ -1,5 +1,5 @@
 // Copyright (C) 2026 Industrial Algebra
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 //! Optical backend for holographic memory with checkpoint-based persistence.
 //!
 //! This module provides an optical computing backend built on `amari-holographic`'s
@@ -48,16 +48,25 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! use minuet::optical::*;
+//! # use amari_holographic::optical::{LeeEncoderConfig, CodebookConfig};
 //!
 //! // Create memory with mock hardware
 //! let hardware = MockOpticalHardware::new(42);
+//! let encoder_config = LeeEncoderConfig {
+//!     carrier_frequency: 0.25,
+//!     carrier_angle: 0.0,
+//!     dimensions: (256, 256),
+//! };
+//! let codebook_config = CodebookConfig { dimensions: (256, 256), base_seed: 42 };
+//! let config = CheckpointConfig::default();
 //! let mut memory = CheckpointedOpticalMemory::new(
 //!     hardware,
-//!     LeeEncoderConfig::default(),
-//!     CodebookConfig::default(),
-//!     CheckpointConfig::default(),
+//!     encoder_config,
+//!     codebook_config,
+//!     config.clone(),
 //! )?;
 //!
 //! // Store associations
@@ -72,6 +81,8 @@
 //! // Later, restore on same or different hardware
 //! let new_hardware = MockOpticalHardware::new(42);
 //! let restored = CheckpointedOpticalMemory::restore(new_hardware, config)?;
+//! # Ok(())
+//! # };
 //! ```
 
 mod checkpoint;
