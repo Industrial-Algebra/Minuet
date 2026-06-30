@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-30
+
+A licensing and production-readiness release. The headline is the **relicense to
+Apache-2.0** (correcting the AGPL-3.0 model from v0.3.0/v0.4.0, which created
+enterprise adoption barriers), plus the stress-test, benchmark, and documentation
+work the PULSE gap analysis flagged. Published v0.4.0 remains AGPL on crates.io;
+v0.5.0 carries Apache-2.0.
+
+### Changed
+
+- **Relicensed AGPL-3.0-only → Apache-2.0.** Replaces the AGPL text + deletes
+  `LICENSE-COMMERCIAL`; updates `Cargo.toml`, all 34 source-file SPDX headers,
+  `CONTRIBUTING.md` (CLA section rewritten to reference Apache + the canonical CLA
+  at `github.com/Industrial-Algebra/.github/blob/main/CLA.md`), and `README.md`.
+  Per the `ia-licensing` skill; matches the ecosystem-wide move (Schubert, Karpal,
+  Proserpina, Praxis). Historical docs left as accurate records. (#21)
+
+### Added
+
+- **Stress tests** (`tests/stress/stress.rs`, behind `required-features = ["optical"]`):
+  capacity overflow (`RejectPolicy` via `Pipeline::store`), 100-thread concurrent
+  read/write on `ShardedStore`, persistence recovery (journal round-trip +
+  `CheckpointedOpticalMemory::restore`), and temperature-sweep (monotone schedules
+  × loads + annealed cleanup convergence). The four production-readiness categories
+  flagged by PULSE_2026-06-28. (#23)
+- **`BENCHMARKS.md`** — real `criterion` measurements (store/retrieve latency,
+  sharded scaling, binding primitives) with reproduce commands and an honest
+  "not benchmarked yet" section. (#23)
+- **`docs/getting-started.md`** — zero-to-running guide (`SimpleMemory`, raw-vector
+  ops, `PipelineBuilder`, annealed `Temperature`, `Attribution`). Examples verified
+  to compile against this release. Addresses the critique's sparse-docs finding. (#23)
+- All 8 previously-`ignore`d optical doc-tests are now compiled (`rust`/`no_run`):
+  `mock_hardware`, `symbolic` (×5), `CheckpointedOpticalMemory`, and the optical
+  module example. They were stale, not just feature-gated — fixed the real API drift
+  each was hiding (`is_ready()` removed; missing `use` imports; `LeeEncoderConfig`/
+  `CodebookConfig` have no `Default`; an undefined-`config` bug). Doc-test count:
+  14 passed + 8 ignored → 22 passed + 0 ignored. (#21)
+
+### Fixed
+
+- `.gitignore` now excludes `.pi/` (agent tooling state).
+
+### Notes
+
+- **Known follow-up (not in this release):** `DenseTrace::add` recall decay
+  (≥2-item traces dilute earlier bindings via the softmax-average `bundle`). The
+  affected integration test is `#[ignore]`d with an evidence note; the fix lives
+  upstream — an additive `superpose` method on `BindingAlgebra`, targeting
+  `amari-holographic` 0.24.0 ([Amari PR #176](https://github.com/Industrial-Algebra/Amari/pull/176)).
+- **Deferred to 0.6.0:** a pure-Rust persistence backend (`sled`/SQLite) to replace
+  the C++/RocksDB requirement.
+- **Research issue [#22](https://github.com/Industrial-Algebra/Minuet/issues/22):**
+  single-diffractive-surface optical-backend simplification (arXiv 2606.01032).
+
 ## [0.4.0] - 2026-06-22
 
 The **Kagome-readiness sprint**: restore capability lost in the v0.3.0 tech-debt release,
@@ -238,8 +292,9 @@ full sprint record.
 - Requires Rust nightly (for future `amari-gpu` compatibility)
 - Generic over any `BindingAlgebra` implementation
 
+[0.5.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.5.0
 [0.4.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.4.0
 [0.3.0]: https://github.com/industrial-algebra/Minuet/releases/tag/v0.3.0
 [0.2.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.2.0
 [0.1.0]: https://github.com/industrial-algebra/minuet/releases/tag/v0.1.0
-[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/industrial-algebra/Minuet/compare/v0.5.0...HEAD
