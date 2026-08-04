@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "amari-core"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4604466370c01bb3453e1fa51a67477727770fbb77898c9dc04b7c974a7e0bbf"
+checksum = "0aed64e14407e6e432b5317c79904d0c8b108ee71fe7fd256fb225b0fdd98a55"
 dependencies = [
  "approx",
  "bytemuck",
@@ -26,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "amari-holographic"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50c6910ba152183755dc13859932c57c5942ab1d3533939315a93b32b289f953"
+checksum = "86cc7df586f46329d6e2228e924032fb8f605e1d5ee8488b10bdcc02ae6109a9"
 dependencies = [
  "amari-core",
  "fastrand",
