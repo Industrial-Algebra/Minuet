@@ -13,8 +13,10 @@ use crate::traits::MemoryTrace;
 
 /// A dense holographic memory trace.
 ///
-/// Stores items in superposition using the bundling operation.
-/// This is the fundamental building block for all memory stores.
+/// Stores items in superposition using additive superposition
+/// (`BindingAlgebra::superpose`), which preserves earlier contributions without
+/// the recall decay inherent to weighted `bundle`. This is the fundamental
+/// building block for all memory stores.
 ///
 /// # Example
 ///
@@ -112,9 +114,7 @@ impl<A: BindingAlgebra> MemoryTrace for DenseTrace<A> {
     fn add(&mut self, item: &A, weight: f64) {
         let mut trace = self.trace.write();
         let scaled = scale_element(item, weight);
-        *trace = trace
-            .bundle(&scaled, self.beta)
-            .unwrap_or_else(|_| trace.clone());
+        *trace = trace.superpose(&scaled).unwrap_or_else(|_| trace.clone());
         self.item_count.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -122,9 +122,7 @@ impl<A: BindingAlgebra> MemoryTrace for DenseTrace<A> {
         let mut trace = self.trace.write();
         let other_trace = other.trace.read();
         let scaled = scale_element(&*other_trace, weight);
-        *trace = trace
-            .bundle(&scaled, self.beta)
-            .unwrap_or_else(|_| trace.clone());
+        *trace = trace.superpose(&scaled).unwrap_or_else(|_| trace.clone());
         self.item_count
             .fetch_add(other.item_count.load(Ordering::Relaxed), Ordering::Relaxed);
     }

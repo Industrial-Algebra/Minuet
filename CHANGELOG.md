@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Bumps `amari-holographic` to `^0.24` and switches `DenseTrace` accumulation
+from weighted `bundle` to additive `superpose`, fixing the recall-decay bug
+that has been documented and `#[ignore]`d since v0.4.0. Held for release
+until Borsalino/Kagome land, to coordinate scope across the holographic stack.
+
+### Fixed
+
+- **`DenseTrace::add` / `DenseTrace::merge` recall decay.** Both accumulated
+  via `BindingAlgebra::bundle(&scaled, beta)`, which for
+  `ProductCliffordAlgebra` is a softmax-weighted *average* rather than an
+  additive sum — so each successive store geometrically decayed earlier
+  bindings (e.g. 5-item probe: `recall("france")`, stored 1st, returned
+  `"spain"` @ conf 0.114). Now uses `BindingAlgebra::superpose` (additive,
+  coefficient-wise, available as of `amari-holographic` 0.24.0), which
+  amari's own docs describe as "intended for memory traces such as
+  `T = Σ keyᵢ ⊛ valueᵢ`" — it preserves earlier contributions without
+  normalization. The `#[ignore]`d `simple_memory_full_workflow` integration
+  test is re-enabled and passes.
+
+### Changed
+
+- **`amari-holographic` floor `^0.23` → `^0.24`** (pulls 0.24.0 now;
+  semver will pick up 0.24.1 when published).
+
+### Note
+
+- The `weight` parameter on `MemoryTrace::add`/`merge` and the `beta`
+  (bundling-temperature) field on `DenseTrace` are retained for API
+  compatibility but no longer affect accumulation under `superpose`. Whether
+  to remove the now-vestigial β machinery is a breaking (0.6.0) decision,
+  deferred to the coordinated release.
+
 ## [0.5.0] - 2026-06-30
 
 A licensing and production-readiness release. The headline is the **relicense to
