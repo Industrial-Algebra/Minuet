@@ -14,6 +14,14 @@ Named after Star Trek's first sentient hologram, Minuet provides memory that par
 
 ## What's New
 
+**0.6.0 — Superpose migration & β cleanup.** `DenseTrace` now accumulates via
+additive `BindingAlgebra::superpose` (amari 0.24), fixing the recall-decay bug
+where the weighted `bundle` *average* erased earlier bindings. The now-vestigial
+bundling-temperature machinery is removed (`DenseTrace::with_temperature`,
+`temperature()`, and the store-config `bundle_temperature` field); retrieval
+annealing temperature (`TemperatureSchedule`, `RetrievalContext`) is unaffected.
+Breaking release.
+
 **0.5.0 — Relicensed to Apache-2.0.** Corrects the AGPL-3.0 licensing from v0.3.0/v0.4.0 (AGPL's network-use clause created enterprise adoption barriers). Apache-2.0 maximizes adoption while preserving attribution and the patent grant; contributions are covered by the [CLA](https://github.com/Industrial-Algebra/.github/blob/main/CLA.md). Previously-published AGPL versions remain on crates.io.
 
 **0.4.0 — Kagome-readiness sprint.** Restores capability lost in the v0.3.0 tech-debt release and stands up the optical compute path the forthcoming microwave back-end Kagome accelerates:
@@ -385,7 +393,7 @@ cargo run --example optical_expressions_demo --features optical
 
 ```toml
 [dependencies]
-minuet = { version = "0.4", features = ["optical"] }
+minuet = { version = "0.6", features = ["optical"] }
 ```
 
 | Feature | Description | Dependencies |
