@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-04
+
+The superpose migration: `DenseTrace` switches from weighted `bundle` to
+additive `BindingAlgebra::superpose`, fixing the recall-decay bug that had
+been documented and `#[ignore]`d since v0.4.0; and the now-vestigial
+bundling-temperature (β) machinery is removed. The `amari-holographic`
+floor moves to `^0.24`. **Breaking release** — coordinate the upgrade with
+Kagome and Schubert (both consume `DenseTrace` / the store configs).
+
+### Fixed
+
+- **`DenseTrace::add` / `DenseTrace::merge` recall decay.** Both accumulated
+  via `BindingAlgebra::bundle(&scaled, beta)`, which for
+  `ProductCliffordAlgebra` is a softmax-weighted *average* rather than an
+  additive sum — so each successive store geometrically decayed earlier
+  bindings (5-item probe: `recall("france")`, stored 1st, returned
+  `"spain"` @ conf 0.114). Now uses `BindingAlgebra::superpose` (additive,
+  coefficient-wise, available as of `amari-holographic` 0.24.0), which
+  amari's own docs describe as "intended for memory traces such as
+  `T = Σ keyᵢ ⊛ valueᵢ`" — it preserves earlier contributions without
+  normalization. The `#[ignore]`d `simple_memory_full_workflow` integration
+  test is re-enabled and passes.
+
+### Changed
+
+- **`amari-holographic` floor `^0.23` → `^0.24`** (pulls 0.24.0 now;
+  semver picks up 0.24.1 when published).
+- **Version `0.5.0` → `0.6.0`** (minor/breaking — public API removed, see
+  below).
+
+### Removed
+
+- The bundling-temperature (β) machinery, made vestigial by the `superpose`
+  swap (β was the `bundle` attention parameter; `superpose` is additive and
+  takes none):
+  - `DenseTrace::with_temperature(beta)` constructor,
+  - `DenseTrace::temperature()` accessor,
+  - the `beta` field on `DenseTrace`,
+  - the `bundle_temperature: f64` field on `SimpleStoreConfig` and
+    `ShardedStoreConfig` (and their default initializers).
+
+  Both store constructors now use `DenseTrace::new()`.
+
+### Note
+
+- **`weight` is deliberately retained** on `MemoryTrace::add`/`merge` (and
+  `StoreOptions::weight`). Under `superpose`, `add` scales the item by
+  `weight` before additive superposition — a legitimate weighted-memory
+  capability, not part of the β machinery. (The common `weight = 1.0` case is
+  identical to plain `superpose(item)`.)
+- **Retrieval temperature is unaffected**: `Temperature`, `TemperatureSchedule`,
+  `RetrievalContext.temperature`, and `ResonatorRetriever::with_temperature`
+  (annealed cleanup) are separate from the removed *bundling* temperature and
+  remain first-class.
+
+
 ## [0.5.0] - 2026-06-30
 
 A licensing and production-readiness release. The headline is the **relicense to

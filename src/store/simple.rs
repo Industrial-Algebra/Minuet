@@ -48,8 +48,6 @@ pub struct SimpleStore<A: BindingAlgebra> {
 /// Configuration for SimpleStore.
 #[derive(Clone, Debug)]
 pub struct SimpleStoreConfig {
-    /// Temperature for bundling operations.
-    pub bundle_temperature: f64,
     /// Warning threshold (utilization fraction).
     pub warning_threshold: f64,
     /// Critical threshold (utilization fraction).
@@ -59,7 +57,6 @@ pub struct SimpleStoreConfig {
 impl Default for SimpleStoreConfig {
     fn default() -> Self {
         Self {
-            bundle_temperature: 1.0,
             warning_threshold: 0.8,
             critical_threshold: 0.95,
         }
@@ -83,7 +80,7 @@ impl<A: BindingAlgebra> SimpleStore<A> {
     #[must_use]
     pub fn with_config(config: SimpleStoreConfig) -> Self {
         Self {
-            trace: RwLock::new(DenseTrace::with_temperature(config.bundle_temperature)),
+            trace: RwLock::new(DenseTrace::new()),
             next_id: AtomicU64::new(0),
             config,
         }

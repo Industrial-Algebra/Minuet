@@ -105,14 +105,9 @@ fn capacity_rejection_flow() -> MinuetResult<()> {
     Ok(())
 }
 
-#[ignore = "WS 6: confirmed recall-quality bug in DenseTrace::add (src/store/trace.rs). \
-             add() accumulates via bundle(beta=1.0), but ProductCliffordAlgebra::bundle is a \
-             softmax-weighted AVERAGE, not an additive sum — so each successive store geometrically \
-             decays earlier bindings. Probe (5 items, PCA<32>): recall('france') [stored 1st] returns \
-             'spain' @ conf 0.114; recall('portugal') [stored last] returns 'lisbon' @ conf 0.450. \
-             The 2-item unit test (reference/simple_memory.rs::store_and_recall) passes; this fails \
-             only at >=3 items. Fix needs an additive-bundle path on BindingAlgebra (currently only \
-             bundle/average) — out of scope for WS 6 (CI/doc hygiene). Tracked as a follow-up."]
+// Previously #[ignore]'d: DenseTrace::add used weighted `bundle`, which
+// softmax-averaged and decayed earlier bindings (recall('france'), stored
+// 1st, returned 'spain' @ conf 0.114). Now fixed via additive `superpose`.
 #[test]
 fn simple_memory_full_workflow() -> MinuetResult<()> {
     let memory = SimpleMemory::<Algebra>::new();
