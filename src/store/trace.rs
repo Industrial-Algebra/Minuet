@@ -39,8 +39,6 @@ pub struct DenseTrace<A: BindingAlgebra> {
     trace: RwLock<A>,
     /// Number of items added.
     item_count: AtomicU64,
-    /// Temperature for bundling (default: 1.0 = soft).
-    beta: f64,
 }
 
 impl<A: BindingAlgebra> Clone for DenseTrace<A> {
@@ -48,7 +46,6 @@ impl<A: BindingAlgebra> Clone for DenseTrace<A> {
         Self {
             trace: RwLock::new(self.trace.read().clone()),
             item_count: AtomicU64::new(self.item_count.load(Ordering::Relaxed)),
-            beta: self.beta,
         }
     }
 }
@@ -66,24 +63,7 @@ impl<A: BindingAlgebra> DenseTrace<A> {
         Self {
             trace: RwLock::new(A::zero()),
             item_count: AtomicU64::new(0),
-            beta: 1.0,
         }
-    }
-
-    /// Create with custom temperature.
-    #[must_use]
-    pub fn with_temperature(beta: f64) -> Self {
-        Self {
-            trace: RwLock::new(A::zero()),
-            item_count: AtomicU64::new(0),
-            beta,
-        }
-    }
-
-    /// Get the bundling temperature.
-    #[must_use]
-    pub fn temperature(&self) -> f64 {
-        self.beta
     }
 }
 

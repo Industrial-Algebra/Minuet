@@ -51,8 +51,6 @@ pub struct ShardedStore<A: BindingAlgebra> {
 pub struct ShardedStoreConfig {
     /// Number of shards.
     pub num_shards: usize,
-    /// Temperature for bundling operations.
-    pub bundle_temperature: f64,
     /// Whether to search all shards on retrieval (slower but more robust).
     pub broadcast_retrieval: bool,
     /// Warning threshold (utilization fraction).
@@ -63,7 +61,6 @@ impl Default for ShardedStoreConfig {
     fn default() -> Self {
         Self {
             num_shards: 8,
-            bundle_temperature: 1.0,
             broadcast_retrieval: false,
             warning_threshold: 0.8,
         }
@@ -90,7 +87,7 @@ impl<A: BindingAlgebra> ShardedStore<A> {
     #[must_use]
     pub fn with_config(config: ShardedStoreConfig) -> Self {
         let shards = (0..config.num_shards)
-            .map(|_| RwLock::new(DenseTrace::with_temperature(config.bundle_temperature)))
+            .map(|_| RwLock::new(DenseTrace::new()))
             .collect();
 
         Self {
